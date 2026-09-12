@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ToolTrack — Backup Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;color:#1f2937;}
+
+/* ── Top bar ── */
+.topbar{background:white;border-bottom:1px solid #e5e7eb;padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,#2563eb,#3b82f6);border-radius:9px;display:flex;align-items:center;justify-content:center;color:white;font-size:16px;}
+.logo-text{font-size:18px;font-weight:700;color:#1f2937;}
+.logo-text span{color:#2563eb;}
+.topbar-right a{font-size:13px;color:#6b7280;text-decoration:none;display:flex;align-items:center;gap:6px;}
+.topbar-right a:hover{color:#2563eb;}
+
+/* ── Layout ── */
+.page{max-width:900px;margin:0 auto;padding:32px 24px;}
+.page-header{margin-bottom:28px;}
+.page-header h1{font-size:22px;font-weight:700;color:#111827;}
+.page-header p{font-size:14px;color:#6b7280;margin-top:4px;}
+
+/* ── Cards ── */
+.card{background:white;border-radius:14px;padding:24px;margin-bottom:20px;border:1px solid #e5e7eb;}
+.card-title{font-size:14px;font-weight:600;color:#374151;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.card-title i{color:#2563eb;}
+
+/* ── Status bar ── */
+.status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.stat{background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
+.stat-label{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;}
+.stat-value{font-size:18px;font-weight:700;color:#111827;margin-top:4px;}
+.stat-value.green{color:#16a34a;}
+.stat-value.red{color:#dc2626;}
+.stat-value.blue{color:#2563eb;}
+
+/* ── Backup button ── */
+.btn-backup{background:linear-gradient(135deg,#2563eb,#3b82f6);color:white;border:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:10px;transition:opacity .2s;width:100%;}
+.btn-backup:hover{opacity:.9;}
+.btn-backup:disabled{opacity:.5;cursor:not-allowed;}
+.btn-secondary{background:white;color:#374151;border:1.5px solid #e5e7eb;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:border-color .2s;}
+.btn-secondary:hover{border-color:#2563eb;color:#2563eb;}
+
+/* ── Progress / Result ── */
+.progress-bar{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;margin:12px 0;}
+.progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#2563eb,#3b82f6);border-radius:3px;transition:width .4s ease;}
+.result-box{border-radius:10px;padding:14px 16px;font-size:13px;margin-top:12px;display:none;}
+.result-box.success{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;}
+.result-box.error  {background:#fef2f2;border:1px solid #fecaca;color:#dc2626;}
+.result-box i{margin-right:6px;}
+
+/* ── Log table ── */
+.log-table{width:100%;border-collapse:collapse;font-size:13px;}
+.log-table th{text-align:left;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;padding:0 12px 10px;}
+.log-table td{padding:10px 12px;border-top:1px solid #f3f4f6;color:#374151;}
+.log-table tr:hover td{background:#f9fafb;}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge.ok {background:#dcfce7;color:#16a34a;}
+.badge.fail{background:#fee2e2;color:#dc2626;}
+.empty-log{text-align:center;padding:30px;color:#9ca3af;font-size:13px;}
+
+/* ── Setup steps ── */
+.steps{counter-reset:step;display:flex;flex-direction:column;gap:14px;}
+.step{display:flex;gap:14px;align-items:flex-start;}
+.step-num{width:28px;height:28px;background:#2563eb;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.step-body{flex:1;}
+.step-body strong{font-size:13px;font-weight:600;color:#111827;display:block;margin-bottom:2px;}
+.step-body p{font-size:12px;color:#6b7280;line-height:1.6;}
+code{background:#f1f5f9;color:#2563eb;padding:1px 6px;border-radius:4px;font-size:12px;font-family:monospace;}
+
+/* ── USB indicator ── */
+.usb-row{display:flex;align-items:center;gap:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;}
+.usb-row i{color:#2563eb;}
+.usb-label{font-size:13px;color:#1e40af;font-weight:500;}
+.usb-path{font-size:12px;color:#6b7280;margin-left:auto;font-family:monospace;}
+
+/* ── Spinner ── */
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:600px){.status-grid{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-icon"><i class="fas fa-tools"></i></div>
+    <div class="logo-text">Tool<span>Track</span></div>
+  </div>
+  <div class="topbar-right">
+    <a href="index.html"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+  </div>
+</div>
+
+<div class="page">
+  <div class="page-header">
+    <h1><i class="fas fa-database" style="color:#2563eb;margin-right:8px;"></i>Backup Manager</h1>
+    <p>Manually trigger a database backup or review backup history.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="status-grid">
+    <div class="stat">
+      <div class="stat-label">Last Backup</div>
+      <div class="stat-value blue" id="statLast">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total Backups</div>
+      <div class="stat-value" id="statCount">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">USB Status</div>
+      <div class="stat-value" id="statUSB">—</div>
+    </div>
+  </div>
+
+  <!-- Trigger card -->
+  <div class="card">
+    <div class="card-title"><i class="fas fa-bolt"></i> Run Backup Now</div>
+    <div class="usb-row">
+      <i class="fas fa-usb"></i>
+      <span class="usb-label">Backup destination:</span>
+      <span class="usb-path" id="usbPath">E:/ToolTrack_Backups</span>
+    </div>
+    <button class="btn-backup" id="backupBtn" onclick="runBackup()">
+      <i class="fas fa-download"></i> Create Backup Now
+    </button>
+    <div class="progress-bar" id="progressBar" style="display:none;">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="result-box" id="resultBox"></div>
+  </div>
+
+  <!-- Log card -->
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between;">
+      <span><i class="fas fa-history"></i> Backup History</span>
+      <button class="btn-secondary" onclick="loadLog()">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
+    </div>
+    <div id="logContainer">
+      <div class="empty-log"><i class="fas fa-inbox" style="font-size:24px;display:block;margin-bottom:8px;"></i>No backup log found yet.<br>Run your first backup to see history here.</div>
+    </div>
+  </div>
+
+  <!-- Setup guide card -->
+  <div class="card">
+    <div class="card-title"><i class="fas fa-calendar-alt"></i> Auto-Schedule with Windows Task Scheduler</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Open Task Scheduler</strong>
+          <p>Press <code>Win + S</code>, search for <code>Task Scheduler</code>, open it.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Create Basic Task</strong>
+          <p>Click <code>Create Basic Task…</code> on the right panel. Name it <em>ToolTrack Backup</em>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Set the Trigger</strong>
+          <p>Choose <code>Daily</code> (recommended) or <code>Weekly</code>. Set a time when the PC is on — e.g. 11 PM.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Set the Action → Start a Program</strong>
+          <p>Program: <code>C:\xampp\php\php.exe</code><br>
+             Arguments: <code>C:\xampp\htdocs\tooltrack\backup.php</code></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <strong>Finish &amp; Test</strong>
+          <p>Click <code>Finish</code>. Right-click the task → <code>Run</code> to test it. Check your USB drive for the <code>.sql</code> file.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">⚠</div>
+        <div class="step-body">
+          <strong>Always plug in the USB before the scheduled time</strong>
+          <p>If the USB is unplugged, <code>backup.php</code> will log an error to <code>backup_log.txt</code> inside your project's <code>/backups/</code> folder (local copy). Consider keeping the local copy as a fallback.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Simulated stats (in a real deployment these read from backup_log.txt via PHP) ──
+const LOG_KEY = 'tooltrack_backup_log';
+
+function saveLog(entry) {
+  const logs = getLogs();
+  logs.unshift(entry);
+  // keep last 30
+  const trimmed = logs.slice(0, 30);
+  // use in-memory storage since localStorage not available
+  window._backupLog = trimmed;
+}
+
+function getLogs() {
+  return window._backupLog || [];
+}
+
+function updateStats() {
+  const logs = getLogs();
+  const successLogs = logs.filter(l => l.ok);
+  document.getElementById('statCount').textContent = logs.length || '0';
+  if (successLogs.length > 0) {
+    const d = new Date(successLogs[0].ts);
+    document.getElementById('statLast').textContent =
+      d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ', ' +
+      d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('statUSB').textContent  = 'Connected ✓';
+    document.getElementById('statUSB').className    = 'stat-value green';
+  } else {
+    document.getElementById('statLast').textContent = 'None yet';
+    document.getElementById('statUSB').textContent  = 'Unknown';
+    document.getElementById('statUSB').className    = 'stat-value';
+  }
+}
+
+function renderLog() {
+  const logs = getLogs();
+  const container = document.getElementById('logContainer');
+  if (logs.length === 0) {
+    container.innerHTML = `<div class="empty-log"><i class="fas fa-inbox" style="font-size:24px;display:block;margin-bottom:8px;"></i>No backups yet. Run your first backup above.</div>`;
+    return;
+  }
+  let rows = logs.map(l => {
+    const d = new Date(l.ts);
+    const dateStr = d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const timeStr = d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const badge = l.ok
+      ? `<span class="badge ok"><i class="fas fa-check"></i> Success</span>`
+      : `<span class="badge fail"><i class="fas fa-times"></i> Failed</span>`;
+    return `<tr>
+      <td>${dateStr} ${timeStr}</td>
+      <td><code style="font-size:12px;">${l.file || '—'}</code></td>
+      <td>${l.size || '—'}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+  container.innerHTML = `
+    <table class="log-table">
+      <thead><tr>
+        <th>Date &amp; Time</th><th>Filename</th><th>Size</th><th>Status</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function loadLog() { renderLog(); updateStats(); }
+
+// ── Run backup ──────────────────────────────────────────────
+async function runBackup() {
+  const btn     = document.getElementById('backupBtn');
+  const bar     = document.getElementById('progressBar');
+  const fill    = document.getElementById('progressFill');
+  const result  = document.getElementById('resultBox');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Backing up…';
+  result.style.display = 'none';
+  bar.style.display = 'block';
+
+  // Animate progress bar
+  let pct = 0;
+  const ticker = setInterval(() => {
+    pct = Math.min(pct + Math.random() * 18, 88);
+    fill.style.width = pct + '%';
+  }, 200);
+
+  try {
+    const res  = await fetch('backup.php');
+    const data = await res.json();
+
+    clearInterval(ticker);
+    fill.style.width = '100%';
+
+    setTimeout(() => { bar.style.display = 'none'; fill.style.width = '0%'; }, 600);
+
+    if (data.success) {
+      result.className   = 'result-box success';
+      result.innerHTML   = `<i class="fas fa-check-circle"></i>
+        <strong>Backup created!</strong> ${data.filename} (${data.size})<br>
+        <span style="font-size:12px;color:#15803d;">Saved to: ${data.saved_to}</span>`;
+      saveLog({ ok: true, ts: Date.now(), file: data.filename, size: data.size });
+    } else {
+      result.className   = 'result-box error';
+      result.innerHTML   = `<i class="fas fa-exclamation-triangle"></i>
+        <strong>Backup failed.</strong> ${data.message}`;
+      saveLog({ ok: false, ts: Date.now(), file: null, size: null });
+    }
+
+  } catch (err) {
+    clearInterval(ticker);
+    bar.style.display  = 'none';
+    fill.style.width   = '0%';
+    result.className   = 'result-box error';
+    result.innerHTML   = `<i class="fas fa-exclamation-triangle"></i>
+      <strong>Cannot reach backup.php.</strong> Make sure XAMPP is running and this file is inside your project folder.`;
+    saveLog({ ok: false, ts: Date.now(), file: null, size: null });
+  }
+
+  result.style.display = 'block';
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-download"></i> Create Backup Now';
+  updateStats();
+  renderLog();
+}
+
+// Init
+loadLog();
+</script>
+</body>
+</html>
