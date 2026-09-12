@@ -1,0 +1,240 @@
+<?php
+// ================================================================
+//  api/transactions.php  —  Borrow & Return
+//
+//  GET  ?type=borrow&status=active|returned&page=1&per_page=50
+//       ?type=return&condition=good|minor|damaged&page=1&per_page=50
+//
+//  POST { type:'borrow', tool_code, borrower_id, due_date, notes }
+//       { type:'return', tool_code, condition, notes }
+// ================================================================
+require_once __DIR__ . '/config.php';
+
+$db     = getDB();
+$method = $_SERVER['REQUEST_METHOD'];
+
+// ── GET ───────────────────────────────────────────────────────
+if ($method === 'GET') {
+    $type      = $_GET['type']      ?? 'borrow';
+    $status    = $_GET['status']    ?? '';
+    $condition = $_GET['condition'] ?? '';
+    $page      = max(1, (int)($_GET['page']     ?? 1));
+    $perPage   = min(200, max(1, (int)($_GET['per_page'] ?? 50)));
+    $offset    = ($page - 1) * $perPage;
+
+    $where  = ["t.type = ?"];
+    $params = [$type];
+
+    if ($type === 'borrow' && $status) {
+        $where[]  = "t.status = ?";
+        $params[] = $status;
+    }
+    if ($type === 'return' && $condition) {
+        $where[]  = "t.`condition` = ?";
+        $params[] = $condition;
+    }
+
+    $sql = "
+        SELECT
+           t.id, t.txn_id, t.type, t.status, t.`condition`, t.notes,
+            t.due_date, t.returned_at, t.created_at,
+            tl.name  AS tool_name,
+            tl.code  AS tool_code,
+            b.full_name AS borrower,
+            b.id_number AS borrower_id_number
+        FROM transactions t
+        LEFT JOIN tools     tl ON tl.id = t.tool_id
+        LEFT JOIN borrowers b  ON b.id  = t.borrower_id
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY t.created_at DESC
+        LIMIT ? OFFSET ?
+    ";
+    $params[] = $perPage;
+    $params[] = $offset;
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll();
+
+    // Count for pagination
+    $countSql  = "SELECT COUNT(*) FROM transactions t WHERE " . implode(' AND ', array_slice($where, 0));
+    $countParams = array_slice($params, 0, -2);
+    $cStmt = $db->prepare($countSql);
+    $cStmt->execute($countParams);
+    $total = (int)$cStmt->fetchColumn();
+
+    http_response_code(200);
+    echo json_encode([
+        'success'  => true,
+        'data'     => $rows,
+        'total'    => $total,
+        'page'     => $page,
+        'per_page' => $perPage,
+    ]);
+    exit;
+}
+
+// ── POST ──────────────────────────────────────────────────────
+if ($method === 'POST') {
+    $b    = body();
+    $type = trim($b['type'] ?? '');
+
+    if (!in_array($type, ['borrow', 'return'])) {
+        fail("type must be 'borrow' or 'return'.");
+    }
+
+    // ── BORROW ──────────────────────────────────────────────
+    if ($type === 'borrow') {
+        $tool_code   = trim($b['tool_code']   ?? '');
+        $borrower_id = (int)($b['borrower_id'] ?? 0);
+        $due_date    = trim($b['due_date']     ?? '');
+        $notes       = trim($b['notes']        ?? '');
+        $qty         = max(1, (int)($b['qty'] ?? 1));
+
+        if (!$tool_code)   fail('tool_code is required.');
+        if (!$borrower_id) fail('borrower_id is required.');
+        if (!$due_date)    fail('due_date is required.');
+
+        if (!$tool_code)   fail('tool_code is required.');
+        if (!$borrower_id) fail('borrower_id is required.');
+        if (!$due_date)    fail('due_date is required.');
+
+        // Find tool
+        $ts = $db->prepare('SELECT * FROM tools WHERE code = ?');
+        $ts->execute([$tool_code]);
+        $tool = $ts->fetch();
+        if (!$tool) fail("Tool '$tool_code' not found.");
+        if ((int)$tool['available'] < $qty) fail("Only {$tool['available']} unit(s) of '$tool_code' available.");
+        // Find borrower
+        $bs = $db->prepare('SELECT * FROM borrowers WHERE id = ?');
+        $bs->execute([$borrower_id]);
+        $borrower = $bs->fetch();
+        if (!$borrower) fail('Borrower not found.');
+
+        $db->beginTransaction();
+        try {
+            // Insert transaction
+            $txn_id = generateTxnId();
+            $ins = $db->prepare('
+                INSERT INTO transactions (txn_id, type, tool_id, borrower_id, status, due_date, notes, qty)
+                VALUES (?, "borrow", ?, ?, "active", ?, ?, ?)
+            ');
+            $ins->execute([$txn_id, $tool['id'], $borrower_id, $due_date, $notes, $qty]);
+            $txn_db_id = (int)$db->lastInsertId();
+
+            // Decrease available
+            $db->prepare('UPDATE tools SET available = available - ? WHERE id = ?')
+               ->execute([$qty, $tool['id']]);
+
+            // Increase borrower counters
+            $db->prepare('UPDATE borrowers SET active_borrows = active_borrows + 1, total_borrows = total_borrows + 1 WHERE id = ?')
+               ->execute([$borrower_id]);
+
+            $db->commit();
+
+            ok([
+                'id'          => $txn_db_id,
+                'txn_id'      => $txn_id,
+                'tool_name'   => $tool['name'],
+                'tool_code'   => $tool['code'],
+                'borrower'    => $borrower['full_name'],
+                'due_date'    => $due_date,
+            ], 201);
+
+        } catch (\Throwable $e) {
+            $db->rollBack();
+            fail('Borrow failed: ' . $e->getMessage(), 500);
+        }
+    }
+
+    // ── RETURN ──────────────────────────────────────────────
+    if ($type === 'return') {
+       
+        $tool_code = trim($b['tool_code'] ?? '');
+        $condition = trim($b['condition'] ?? 'good');
+        $notes     = trim($b['notes']     ?? '');
+        $qty       = max(1, (int)($b['qty'] ?? 1));
+
+        if (!$tool_code) fail('tool_code is required.');
+        if (!in_array($condition, ['good', 'minor', 'damaged'])) {
+            fail("condition must be good, minor, or damaged.");
+        }
+
+        // Find tool
+        $ts = $db->prepare('SELECT * FROM tools WHERE code = ?');
+        $ts->execute([$tool_code]);
+        $tool = $ts->fetch();
+        if (!$tool) fail("Tool '$tool_code' not found.");
+
+        // Find the active borrow transaction for this tool
+        $active = $db->prepare("
+            SELECT t.*, b.full_name AS borrower_name
+            FROM transactions t
+            LEFT JOIN borrowers b ON b.id = t.borrower_id
+            WHERE t.tool_id = ? AND t.type = 'borrow' AND t.status = 'active'
+            ORDER BY t.created_at DESC LIMIT 1
+        ");
+       $active->execute([$tool['id']]);
+        $borrow = $active->fetch();
+
+        if ($borrow) {
+            $outstanding = (int)$borrow['qty'] - (int)$borrow['qty_returned'];
+            if ($qty > $outstanding) fail("Cannot return $qty — only $outstanding unit(s) outstanding.");
+        }
+
+        $db->beginTransaction();
+        try {
+            $txn_id = generateTxnId();
+            $now    = date('Y-m-d H:i:s');
+
+            // Insert return transaction
+            $ins = $db->prepare('
+                INSERT INTO transactions (txn_id, type, tool_id, borrower_id, status, `condition`, notes, returned_at, qty)
+                VALUES (?, "return", ?, ?, "returned", ?, ?, ?, ?)
+            ');
+            $ins->execute([
+                $txn_id,
+                $tool['id'],
+                $borrow ? $borrow['borrower_id'] : null,
+                $condition,
+                $notes,
+                $now,
+                $qty,
+            ]);
+            $txn_db_id = (int)$db->lastInsertId();
+
+            // Update original borrow row
+            if ($borrow) {
+                $newReturned    = (int)$borrow['qty_returned'] + $qty;
+                $fullyReturned  = $newReturned >= (int)$borrow['qty'];
+                $db->prepare("UPDATE transactions SET qty_returned=?, status=?, returned_at=? WHERE id=?")
+                   ->execute([$newReturned, $fullyReturned ? 'returned' : 'active', $fullyReturned ? $now : null, $borrow['id']]);
+
+                if ($fullyReturned) {
+                    $db->prepare('UPDATE borrowers SET active_borrows = GREATEST(active_borrows - 1, 0) WHERE id = ?')
+                       ->execute([$borrow['borrower_id']]);
+                }
+            }
+
+            // Restore available count
+            $db->prepare('UPDATE tools SET available = LEAST(available + ?, quantity) WHERE id = ?')
+               ->execute([$qty, $tool['id']]);
+            $db->commit();
+
+            ok([
+                'id'          => $txn_db_id,
+                'txn_id'      => $txn_id,
+                'tool_name'   => $tool['name'],
+                'tool_code'   => $tool['code'],
+                'returned_by' => $borrow['borrower_name'] ?? null,
+                'condition'   => $condition,
+            ], 201);
+
+        } catch (\Throwable $e) {
+            $db->rollBack();
+            fail('Return failed: ' . $e->getMessage(), 500);
+        }
+    }
+}
+
+fail('Method not allowed.', 405);

@@ -1,0 +1,6 @@
+cat > .gitignore << 'EOF'
+/backups/
+*.sql.bak
+.DS_Store
+Thumbs.db
+EOF
