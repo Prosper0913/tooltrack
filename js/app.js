@@ -70,6 +70,12 @@ document.querySelectorAll('.nav-item[data-page]').forEach(item=>{
 });
 
 function navigateTo(page){
+  // Camera stays open (and the browser's camera indicator stays lit)
+  // if you switch tabs without hitting Stop first — stop it here so
+  // leaving the page always releases the camera.
+  if(borrowScanning && page!=='borrow') stopBorrowScanner();
+  if(returnScanning && page!=='return') stopReturnScanner();
+
   document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
   document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -241,7 +247,7 @@ function renderToolsTable(tools){
       <td>${t.min_stock}</td>
       <td><span class="status-badge ${t.status}"><span class="status-dot"></span>${statusLabel(t.status)}</span></td>
       <td><div class="action-btns">
-        <button class="action-btn view" title="QR Code" onclick="showQR('${t.code}')"><i class="fas fa-qrcode"></i></button>
+        <button class="action-btn view" title="QR Code" onclick="showQR('${t.code}','${t.name.replace(/'/g,"\\'")}')"><i class="fas fa-qrcode"></i></button>
         <button class="action-btn edit" title="Edit" onclick="editTool(${t.id})"><i class="fas fa-edit"></i></button>
         ${isAdmin?`<button class="action-btn" title="${t.is_active==0?'Reactivate':'Retire'}" onclick="toggleToolActive(${t.id},${t.is_active==0?'true':'false'},'${t.name.replace(/'/g,"\\'")}')"><i class="fas fa-power-off"></i></button>`:''}
       </div></td>
@@ -327,8 +333,47 @@ async function saveTool(){
   }catch(_){}finally{setLoading('saveToolBtn',false);}
 }
 
-function showQR(code){
-  showToast(`QR for: ${code}. Hook into your QR generation endpoint.`,'success');
+let currentQrToolLabel = '', currentQrToolCode = '';
+
+function showQR(code, name){
+  currentQrToolCode = code;
+  currentQrToolLabel = name || '';
+  const container = document.getElementById('qrCodeContainer');
+  container.innerHTML = '';
+  // The scanner (startBorrowScanner/startReturnScanner) drops the raw
+  // decoded text straight into the Tool Code field, so this must
+  // encode exactly the tool's `code` value — nothing else.
+  new QRCode(container, {
+    text: code,
+    width: 200,
+    height: 200,
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  document.getElementById('qrToolLabel').textContent = name || '';
+  document.getElementById('qrToolCode').textContent = code;
+  openModal('qrModal');
+}
+
+function printQR(){
+  const canvas = document.querySelector('#qrCodeContainer canvas');
+  const img = canvas ? canvas.toDataURL('image/png') : (document.querySelector('#qrCodeContainer img')?.src || '');
+  const w = window.open('', '_blank', 'width=400,height=500');
+  w.document.write(`
+    <html><head><title>${currentQrToolCode} QR Label</title>
+    <style>
+      body{font-family:sans-serif;text-align:center;padding:24px}
+      img{width:200px;height:200px}
+      h3{margin:12px 0 2px}
+      p{margin:0;color:#666;font-family:monospace}
+    </style></head>
+    <body>
+      <img src="${img}">
+      <h3>${currentQrToolLabel}</h3>
+      <p>${currentQrToolCode}</p>
+      <script>window.onload=()=>{window.print();}<\/script>
+    </body></html>
+  `);
+  w.document.close();
 }
 
 async function exportToolsCSV(){
@@ -370,7 +415,7 @@ function renderBorrowersTable(borrowers){
   const isAdmin = window.CURRENT_ROLE === 'Admin';
   tbody.innerHTML=borrowers.map(b=>`
     <tr${b.is_active==0?' style="opacity:.55"':''}>
-      <td><div class="tool-item">
+      <td><div class="tool-item" style="cursor:pointer" onclick="viewBorrowerHistory(${b.id})" title="View history">
         <div class="user-avatar" style="width:40px;height:40px;font-size:13px">${getInitials(b.full_name)}</div>
         <div class="tool-info"><h4>${b.full_name}${b.is_active==0?' <span class="status-badge low-stock" style="margin-left:6px"><span class="status-dot"></span>Inactive</span>':''}</h4><span>${b.type}</span></div>
       </div></td>
@@ -382,12 +427,60 @@ function renderBorrowersTable(borrowers){
       <td><span class="status-badge ${b.active_borrows>0?'borrowed':'available'}"><span class="status-dot"></span>${b.active_borrows} item${b.active_borrows!==1?'s':''}</span></td>
       <td>${b.total_borrows}</td>
       <td><div class="action-btns">
+        <button class="action-btn view" title="View History" onclick="viewBorrowerHistory(${b.id})"><i class="fas fa-clock-rotate-left"></i></button>
         ${isAdmin?`
         <button class="action-btn edit" title="Edit" onclick="editBorrower(${b.id})"><i class="fas fa-edit"></i></button>
         <button class="action-btn" title="${b.is_active==0?'Activate':'Deactivate'}" onclick="toggleBorrowerActive(${b.id},${b.is_active==0?'true':'false'})"><i class="fas fa-power-off"></i></button>
-        `:'<span style="color:var(--gray-400);font-size:12px">—</span>'}
+        `:''}
       </div></td>
     </tr>`).join('');
+}
+
+// ── Borrower history/detail modal ──────────────────────────────
+async function viewBorrowerHistory(id){
+  document.getElementById('bhName').textContent='Loading…';
+  document.getElementById('bhMeta').textContent='';
+  document.getElementById('bhStats').innerHTML='';
+  document.getElementById('bhHistoryBody').innerHTML='<tr class="empty-row"><td colspan="6"><span class="spinner dark"></span> Loading…</td></tr>';
+  openModal('borrowerHistoryModal');
+  try{
+    const res=await apiFetch(`${API}/borrowers.php?id=${id}&history=1`);
+    const {borrower,history,stats}=res.data;
+
+    document.getElementById('bhName').textContent=borrower.full_name;
+    document.getElementById('bhMeta').textContent=
+      `${borrower.type} • ${borrower.id_number}${borrower.course?` • ${borrower.course} ${borrower.section_name||''}`:''}${borrower.is_active==0?' • Inactive':''}`;
+
+    const statChip=(label,val,cls)=>`<span class="status-badge ${cls}" style="margin-right:8px"><span class="status-dot"></span>${val} ${label}</span>`;
+    document.getElementById('bhStats').innerHTML=
+      statChip('returned on time',stats.on_time,'available')+
+      statChip('returned late',stats.late,stats.late>0?'low-stock':'available')+
+      statChip('overdue now',stats.overdue_now,stats.overdue_now>0?'borrowed':'available')+
+      statChip('damaged/minor wear on return',stats.damaged_or_minor,stats.damaged_or_minor>0?'low-stock':'available');
+
+    if(!history.length){
+      document.getElementById('bhHistoryBody').innerHTML='<tr class="empty-row"><td colspan="6">No borrow/return activity yet.</td></tr>';
+      return;
+    }
+    const flagBadge=(r)=>{
+      if(r.type==='return') return `<span class="status-badge ${r.condition==='damaged'?'low-stock':(r.condition==='minor'?'low-stock':'available')}"><span class="status-dot"></span>${r.condition||'—'}</span>`;
+      if(r.flag==='late') return '<span class="status-badge low-stock"><span class="status-dot"></span>Returned Late</span>';
+      if(r.flag==='overdue') return '<span class="status-badge borrowed"><span class="status-dot"></span>Overdue</span>';
+      if(r.flag==='on_time') return '<span class="status-badge available"><span class="status-dot"></span>On Time</span>';
+      return `<span class="status-badge available"><span class="status-dot"></span>${r.status}</span>`;
+    };
+    document.getElementById('bhHistoryBody').innerHTML=history.map(r=>`
+      <tr>
+        <td><span class="status-badge ${r.type==='borrow'?'borrowed':'available'}"><span class="status-dot"></span>${r.type==='borrow'?'Borrow':'Return'}</span></td>
+        <td>${r.tool_name||'—'} <code style="font-size:11px">${r.tool_code||''}</code></td>
+        <td>${r.qty}</td>
+        <td>${r.type==='borrow'?(r.due_date||'—'):(r.returned_at?new Date(r.returned_at).toLocaleDateString():'—')}</td>
+        <td>${flagBadge(r)}</td>
+        <td>${new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</td>
+      </tr>`).join('');
+  }catch(_){
+    document.getElementById('bhHistoryBody').innerHTML='<tr class="empty-row"><td colspan="6">Failed to load history.</td></tr>';
+  }
 }
 
 // Admin-only: manual activate/deactivate, separate from CMS-driven sync.
@@ -613,6 +706,8 @@ function returnScanUploadedImage(event){
 }
 function onReturnToolIdInput(){document.getElementById('clearReturnToolBtn').classList.toggle('visible',document.getElementById('returnToolId').value.length>0);}
 function clearReturnToolId(){document.getElementById('returnToolId').value='';document.getElementById('clearReturnToolBtn').classList.remove('visible');document.getElementById('returnUploadPreview').style.display='none';setScanStatus('returnScanStatus','returnScanStatusText','','');}
+function onBorrowToolIdInput(){document.getElementById('clearBorrowToolBtn').classList.toggle('visible',document.getElementById('borrowToolId').value.length>0);}
+function clearBorrowToolId(){document.getElementById('borrowToolId').value='';document.getElementById('clearBorrowToolBtn').classList.remove('visible');document.getElementById('borrowUploadPreview').style.display='none';setScanStatus('borrowScanStatus','borrowScanStatusText','','');}
 
 /* ───────────────────────────────────────────────────────────
    10. BORROW / RETURN SUBMISSION
@@ -662,13 +757,9 @@ async function handleBorrow(){
     document.getElementById('borrowerSelect').value='';
     document.getElementById('borrowerNameInput').value='';
     document.getElementById('borrowerIdNumberInput').value='';
+    document.getElementById('borrowerTypeInput').value='';
     document.getElementById('borrowNotes').value='';
   }catch(_){}finally{setLoading('borrowSubmitBtn',false);}
-    document.getElementById('borrowerSelect').value='';
-  document.getElementById('borrowerNameInput').value='';
-  document.getElementById('borrowerIdNumberInput').value='';
-  document.getElementById('borrowerTypeInput').value='';
-  document.getElementById('borrowNotes').value='';
 }
 
 async function handleReturn(){

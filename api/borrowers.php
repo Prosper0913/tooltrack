@@ -24,7 +24,67 @@ if (in_array($method, ['POST', 'PUT', 'PATCH'], true)) {
 // ── GET ───────────────────────────────────────────────────────
 if ($method === 'GET') {
 
-    // Single borrower
+    // Single borrower — with full transaction history + on-time/late stats
+    if (!empty($_GET['id']) && !empty($_GET['history'])) {
+        $id = (int)$_GET['id'];
+
+        $stmt = $db->prepare("SELECT b.*, e.course, e.section_name, e.cms_section_id
+            FROM borrowers b
+            LEFT JOIN borrower_enrollments e
+              ON e.borrower_id = b.id AND e.is_active = 1
+            WHERE b.id = ?
+            ORDER BY e.id ASC
+            LIMIT 1");
+        $stmt->execute([$id]);
+        $b = $stmt->fetch();
+        if (!$b) fail('Borrower not found.', 404);
+
+        // Every transaction (borrow AND return events) for this borrower,
+        // newest first. A 'borrow' row already carries its own due_date /
+        // status / returned_at (updated in place when returned), so
+        // on-time-vs-late is computed straight off that single row —
+        // no need to pair it up with a separate return row for that part.
+        $hist = $db->prepare("
+            SELECT t.id, t.txn_id, t.type, t.status, t.`condition`, t.notes,
+                   t.due_date, t.returned_at, t.created_at, t.qty, t.qty_returned,
+                   tl.name AS tool_name, tl.code AS tool_code
+            FROM transactions t
+            LEFT JOIN tools tl ON tl.id = t.tool_id
+            WHERE t.borrower_id = ?
+            ORDER BY t.created_at DESC
+        ");
+        $hist->execute([$id]);
+        $rows = $hist->fetchAll();
+
+        // Stats, computed from the borrow rows only (they're the ones
+        // with a due_date to judge against).
+        $stats = ['on_time' => 0, 'late' => 0, 'overdue_now' => 0, 'damaged_or_minor' => 0];
+        $today = date('Y-m-d');
+        foreach ($rows as &$r) {
+            $r['flag'] = null;
+            if ($r['type'] === 'borrow') {
+                if ($r['status'] === 'returned' && $r['returned_at']) {
+                    if (substr($r['returned_at'], 0, 10) > $r['due_date']) {
+                        $r['flag'] = 'late';
+                        $stats['late']++;
+                    } else {
+                        $r['flag'] = 'on_time';
+                        $stats['on_time']++;
+                    }
+                } elseif ($r['status'] === 'active' && $r['due_date'] < $today) {
+                    $r['flag'] = 'overdue';
+                    $stats['overdue_now']++;
+                }
+            } elseif ($r['type'] === 'return' && in_array($r['condition'], ['minor', 'damaged'], true)) {
+                $stats['damaged_or_minor']++;
+            }
+        }
+        unset($r);
+
+        ok(['borrower' => $b, 'history' => $rows, 'stats' => $stats]);
+    }
+
+    // Single borrower — plain (used by the edit form, no history needed)
     if (!empty($_GET['id'])) {
         $stmt = $db->prepare("SELECT b.*, e.course, e.section_name, e.cms_section_id
             FROM borrowers b

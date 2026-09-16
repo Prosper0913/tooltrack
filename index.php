@@ -243,6 +243,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
 <!-- Third-party libraries -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <!-- App styles -->
 <link rel="stylesheet" href="css/styles.css">
@@ -811,6 +812,54 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
     <div class="modal-footer">
       <button class="btn btn-gray" onclick="closeModal('reportModal')">Close</button>
       <button class="btn btn-blue" id="exportReportBtn" onclick="exportCurrentReport()"><i class="fas fa-download"></i> Export CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL: Tool QR Code
+═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <h3 class="modal-title">Tool QR Code</h3>
+      <button class="modal-close" onclick="closeModal('qrModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="text-align:center">
+      <div id="qrCodeContainer" style="display:flex;justify-content:center;margin:8px 0 12px"></div>
+      <p id="qrToolLabel" style="font-weight:600;font-size:15px;margin-bottom:2px"></p>
+      <p id="qrToolCode" style="color:var(--gray-500);font-size:13px;font-family:monospace"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeModal('qrModal')">Close</button>
+      <button class="btn btn-blue" onclick="printQR()"><i class="fas fa-print"></i> Print Label</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL: Borrower History
+═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="borrowerHistoryModal">
+  <div class="modal" style="max-width:820px;width:92vw">
+    <div class="modal-header">
+      <div>
+        <h3 class="modal-title" id="bhName">Borrower</h3>
+        <p id="bhMeta" style="color:var(--gray-500);font-size:13px;margin-top:2px"></p>
+      </div>
+      <button class="modal-close" onclick="closeModal('borrowerHistoryModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="bhStats" style="margin-bottom:16px;display:flex;flex-wrap:wrap;gap:8px"></div>
+      <div class="table-container" style="max-height:50vh;overflow:auto">
+        <table class="data-table">
+          <thead><tr><th>Event</th><th>Tool</th><th>Qty</th><th>Due / Returned</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody id="bhHistoryBody"><tr class="empty-row"><td colspan="6"><span class="spinner dark"></span> Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeModal('borrowerHistoryModal')">Close</button>
     </div>
   </div>
 </div>
