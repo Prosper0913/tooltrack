@@ -7,7 +7,7 @@
 //  is redirected straight to the login page before any of the
 //  markup below (including the CMS sync section) is rendered.
 // ============================================================
-require_once __DIR__ . '/api/config.php'; // starts the session
+require_once __DIR__ . '/api/bootstrap.php'; // session + DB + role constants — NOT api/config.php, which sends a JSON content-type header that would break this HTML page
 
 if (empty($_SESSION['user_id'])) {
     header('Location: login_usa.html');

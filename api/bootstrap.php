@@ -1,7 +1,14 @@
 <?php
 // ================================================================
-//  api/config.php  —  Database connection
-//  Edit the 4 constants below to match your server.
+//  api/bootstrap.php  —  shared by EVERY PHP file (pages and API
+//  endpoints alike). Sets up session, DB connection, roles, and
+//  helper functions — but sends NO HTTP headers of its own, so it's
+//  safe to include from an HTML page like index.php.
+//
+//  api/*.php endpoints should require api/config.php instead (which
+//  includes this file, then layers the JSON/CORS headers on top).
+//  index.php and any other HTML page should require this file
+//  directly.
 // ================================================================
 
 define('DB_HOST', 'localhost');
@@ -21,24 +28,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// ── CORS headers ─────────────────────────────────────────────
-// NOTE: this app is currently served same-origin (index.php and
-// api/*.php on the same host), so the browser doesn't apply CORS
-// to these requests at all — sessions/cookies just work. If you
-// ever split the frontend onto a different origin, '*' below is
-// invalid together with credentials=true (browsers will reject
-// it) — replace '*' with your exact frontend origin at that point.
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');          // tighten in production
-header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-header('Access-Control-Allow-Credentials: true');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
 // ── PDO connection (shared by every endpoint) ──────────────────
 function getDB(): PDO {
     static $pdo = null;
@@ -52,6 +41,7 @@ function getDB(): PDO {
             ]);
         } catch (PDOException $e) {
             http_response_code(500);
+            header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $e->getMessage()]);
             exit;
         }
@@ -59,15 +49,18 @@ function getDB(): PDO {
     return $pdo;
 }
 
-// ── Helpers ────────────────────────────────────────────────────
+// ── JSON response helpers (used by API endpoints; harmless if an
+//    HTML page never calls them) ────────────────────────────────
 function ok($data = null, int $code = 200): void {
     http_response_code($code);
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['success' => true, 'data' => $data]);
     exit;
 }
 
 function fail(string $message, int $code = 400): void {
     http_response_code($code);
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['success' => false, 'message' => $message]);
     exit;
 }
@@ -82,9 +75,12 @@ function generateTxnId(): string {
 }
 
 // ── Auth guards ──────────────────────────────────────────────
-// Call requireLogin() at the top of any endpoint that needs a
-// logged-in user (i.e. almost all of them). Call requireRole()
-// instead when only specific role(s) may proceed.
+// Call requireLogin() at the top of any endpoint/page that needs a
+// logged-in user. Call requireRole() when only specific role(s)
+// may proceed. On an API endpoint these fail() with JSON + a status
+// code; on an HTML page, check currentUser() yourself instead (see
+// index.php) since redirecting is usually what you want there, not
+// a JSON error.
 function currentUser(): ?array {
     if (empty($_SESSION['user_id'])) return null;
     return [
