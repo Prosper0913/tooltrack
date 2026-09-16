@@ -162,23 +162,33 @@ if ($method === 'PUT') {
     ok($tool);
 }
 
-// ── DELETE ────────────────────────────────────────────────────
-if ($method === 'DELETE') {
-    $id = (int)($_GET['id'] ?? 0);
-    if (!$id) fail('Missing tool id.');
+// ── PATCH (Retire / Reactivate) ────────────────────────────────
+// Admin-only. Retiring hides a tool from the Borrow flow without
+// deleting it or its transaction history (a hard DELETE used to
+// cascade-delete every transaction row for that tool — this
+// replaces that with a safe, reversible toggle instead).
+if ($method === 'PATCH') {
+    requireRole(ROLE_ADMIN);
 
-    // Prevent delete if tool has active borrows
-    $check = $db->prepare("SELECT COUNT(*) FROM transactions WHERE tool_id = ? AND status = 'active'");
-    $check->execute([$id]);
-    if ((int)$check->fetchColumn() > 0) {
-        fail('Cannot delete: this tool has active borrows. Return it first.');
+    $b  = body();
+    $id = (int)($b['id'] ?? 0);
+    if (!$id || !array_key_exists('is_active', $b)) {
+        fail('id and is_active are required.');
     }
+    $isActive = $b['is_active'] ? 1 : 0;
 
-    $stmt = $db->prepare('DELETE FROM tools WHERE id = ?');
+    $existing = $db->prepare('SELECT id FROM tools WHERE id = ?');
+    $existing->execute([$id]);
+    if (!$existing->fetch()) fail('Tool not found.', 404);
+
+    $stmt = $db->prepare('UPDATE tools SET is_active = ? WHERE id = ?');
+    $stmt->execute([$isActive, $id]);
+
+    $stmt = $db->prepare('SELECT * FROM tools WHERE id = ?');
     $stmt->execute([$id]);
-
-    if ($stmt->rowCount() === 0) fail('Tool not found.', 404);
-    ok(['deleted_id' => $id]);
+    $tool = $stmt->fetch();
+    $tool['status'] = toolStatus($tool);
+    ok($tool);
 }
 
 fail('Method not allowed.', 405);

@@ -6,7 +6,7 @@
 //         ?id=N  → single borrower
 //  POST   { full_name, id_number, type, email, phone }
 //  PUT    { id, full_name, id_number, type, email, phone }
-//  DELETE ?id=N
+//  PATCH  { id, is_active }  → activate/deactivate (no hard delete)
 // ================================================================
 require_once __DIR__ . '/config.php';
 
@@ -17,7 +17,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 // need this to select a borrower on the Borrow page. Creating,
 // editing, or deleting borrower records is Admin-only.
 requireLogin();
-if (in_array($method, ['POST', 'PUT', 'DELETE'], true)) {
+if (in_array($method, ['POST', 'PUT', 'PATCH'], true)) {
     requireRole(ROLE_ADMIN);
 }
 
@@ -199,23 +199,9 @@ if ($method === 'PATCH') {
     ok($stmt->fetch());
 }
 
-// ── DELETE ────────────────────────────────────────────────────
-if ($method === 'DELETE') {
-    $id = (int)($_GET['id'] ?? 0);
-    if (!$id) fail('Missing borrower id.');
-
-    // Block delete if has active borrows
-    $check = $db->prepare("SELECT active_borrows FROM borrowers WHERE id = ?");
-    $check->execute([$id]);
-    $b = $check->fetch();
-    if (!$b) fail('Borrower not found.', 404);
-    if ((int)$b['active_borrows'] > 0) {
-        fail("Cannot delete: this borrower has {$b['active_borrows']} active borrow(s). They must return the tools first.");
-    }
-
-    $stmt = $db->prepare('DELETE FROM borrowers WHERE id = ?');
-    $stmt->execute([$id]);
-    ok(['deleted_id' => $id]);
-}
+// Deliberately no DELETE handler — borrower records are never hard-
+// deleted, to preserve transaction history (deleting used to NULL
+// out borrower_id on every past transaction). Use PATCH above to
+// deactivate a borrower instead.
 
 fail('Method not allowed.', 405);

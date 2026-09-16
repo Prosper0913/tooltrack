@@ -689,10 +689,10 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
     <!-- ═══ REPORTS ═══ -->
     <section class="page" id="reportsPage">
       <div class="reports-grid">
-        <div class="report-card" onclick="downloadReport('inventory')"><div class="report-icon report-icon-purple"><i class="fas fa-clipboard-list"></i></div><div class="report-info"><h3>Inventory Report</h3><p>Complete list of all tools with current status</p></div></div>
-        <div class="report-card" onclick="downloadReport('transactions')"><div class="report-icon report-icon-green"><i class="fas fa-exchange-alt"></i></div><div class="report-info"><h3>Transaction Report</h3><p>All borrow and return transactions</p></div></div>
-        <div class="report-card" onclick="downloadReport('borrowers')"><div class="report-icon report-icon-orange"><i class="fas fa-users"></i></div><div class="report-info"><h3>Borrower Activity</h3><p>Borrowing patterns and statistics</p></div></div>
-        <div class="report-card" onclick="downloadReport('overdue')"><div class="report-icon report-icon-red"><i class="fas fa-exclamation-triangle"></i></div><div class="report-info"><h3>Overdue Report</h3><p>Tools past their due date</p></div></div>
+        <div class="report-card" onclick="viewReport('inventory','Inventory Report')"><div class="report-icon report-icon-purple"><i class="fas fa-clipboard-list"></i></div><div class="report-info"><h3>Inventory Report</h3><p>Complete list of all tools with current status</p></div></div>
+        <div class="report-card" onclick="viewReport('transactions','Transaction Report')"><div class="report-icon report-icon-green"><i class="fas fa-exchange-alt"></i></div><div class="report-info"><h3>Transaction Report</h3><p>All borrow and return transactions</p></div></div>
+        <div class="report-card" onclick="viewReport('borrowers','Borrower Activity')"><div class="report-icon report-icon-orange"><i class="fas fa-users"></i></div><div class="report-info"><h3>Borrower Activity</h3><p>Borrowing patterns and statistics</p></div></div>
+        <div class="report-card" onclick="viewReport('overdue','Overdue Report')"><div class="report-icon report-icon-red"><i class="fas fa-exclamation-triangle"></i></div><div class="report-info"><h3>Overdue Report</h3><p>Tools past their due date</p></div></div>
       </div>
       <div class="content-grid" style="margin-top:32px">
         <div class="card"><div class="card-header"><h3 class="card-title">Monthly Statistics</h3></div><div class="card-body"><div class="chart-container"><canvas id="monthlyChart"></canvas></div></div></div>
@@ -786,6 +786,31 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
     <div class="modal-footer">
       <button class="btn btn-gray" onclick="closeModal('borrowerModal')">Cancel</button>
       <button class="btn btn-blue" id="saveBorrowerBtn" onclick="saveBorrower()">Add Borrower</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL: Report Detail (view, then optionally export)
+═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal" style="max-width:900px;width:92vw">
+    <div class="modal-header">
+      <h3 class="modal-title" id="reportModalTitle">Report</h3>
+      <button class="modal-close" onclick="closeModal('reportModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <p id="reportModalCount" style="color:var(--gray-500);font-size:13px;margin-bottom:12px"></p>
+      <div class="table-container" style="max-height:55vh;overflow:auto">
+        <table class="data-table">
+          <thead id="reportTableHead"></thead>
+          <tbody id="reportTableBody"><tr class="empty-row"><td><span class="spinner dark"></span> Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeModal('reportModal')">Close</button>
+      <button class="btn btn-blue" id="exportReportBtn" onclick="exportCurrentReport()"><i class="fas fa-download"></i> Export CSV</button>
     </div>
   </div>
 </div>

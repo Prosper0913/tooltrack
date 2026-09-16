@@ -108,6 +108,7 @@ if ($method === 'POST') {
         $ts->execute([$tool_code]);
         $tool = $ts->fetch();
         if (!$tool) fail("Tool '$tool_code' not found.");
+        if (!(int)$tool['is_active']) fail("'{$tool['name']}' has been retired and can no longer be borrowed.");
         if ((int)$tool['available'] < $qty) fail("Only {$tool['available']} unit(s) of '$tool_code' available.");
         // Find borrower
         $bs = $db->prepare('SELECT * FROM borrowers WHERE id = ?');

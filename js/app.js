@@ -227,11 +227,12 @@ const CAT_ICONS={Utensils:'fa-solid fa-utensils',Mechanical:'fas fa-cogs',Measur
 function renderToolsTable(tools){
   const tbody=document.getElementById('toolsTableBody');
   if(!tools.length){tbody.innerHTML='<tr class="empty-row"><td colspan="8">No tools found.</td></tr>';return;}
+  const isAdmin = window.CURRENT_ROLE === 'Admin';
   tbody.innerHTML=tools.map(t=>`
-    <tr>
+    <tr${t.is_active==0?' style="opacity:.55"':''}>
       <td><div class="tool-item">
         <div class="tool-icon"><i class="${CAT_ICONS[t.category]||'fas fa-box'}"></i></div>
-        <div class="tool-info"><h4>${t.name}</h4><span>${t.description||t.category}</span></div>
+        <div class="tool-info"><h4>${t.name}${t.is_active==0?' <span class="status-badge low-stock" style="margin-left:6px"><span class="status-dot"></span>Retired</span>':''}</h4><span>${t.description||t.category}</span></div>
       </div></td>
       <td><code>${t.code}</code></td>
       <td>${t.category}</td>
@@ -242,9 +243,32 @@ function renderToolsTable(tools){
       <td><div class="action-btns">
         <button class="action-btn view" title="QR Code" onclick="showQR('${t.code}')"><i class="fas fa-qrcode"></i></button>
         <button class="action-btn edit" title="Edit" onclick="editTool(${t.id})"><i class="fas fa-edit"></i></button>
-        <button class="action-btn delete" title="Delete" onclick="deleteTool(${t.id},'${t.name.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
+        ${isAdmin?`<button class="action-btn" title="${t.is_active==0?'Reactivate':'Retire'}" onclick="toggleToolActive(${t.id},${t.is_active==0?'true':'false'},'${t.name.replace(/'/g,"\\'")}')"><i class="fas fa-power-off"></i></button>`:''}
       </div></td>
     </tr>`).join('');
+}
+
+// Admin-only: retire/reactivate a tool. No hard delete — deleting a
+// tool used to cascade-delete every past transaction for it.
+async function toggleToolActive(id, makeActive, name){
+  if(!makeActive){
+    document.getElementById('deleteConfirmText').textContent=`Retire "${name}"? It will be hidden from the Borrow flow but its history is kept, and you can reactivate it anytime.`;
+    document.getElementById('confirmDeleteBtn').onclick=async()=>{
+      try{
+        await apiFetch(`${API}/tools.php`,{method:'PATCH',body:JSON.stringify({id,is_active:false})});
+        showToast(`"${name}" retired.`);
+        closeModal('confirmDeleteModal');
+        loadTools();
+      }catch(_){}
+    };
+    openModal('confirmDeleteModal');
+    return;
+  }
+  try{
+    await apiFetch(`${API}/tools.php`,{method:'PATCH',body:JSON.stringify({id,is_active:true})});
+    showToast(`"${name}" reactivated.`);
+    loadTools();
+  }catch(_){}
 }
 
 function statusLabel(s){return{available:'Available',borrowed:'Borrowed','low-stock':'Low Stock'}[s]||s;}
@@ -301,19 +325,6 @@ async function saveTool(){
     closeModal('toolModal');
     loadTools();
   }catch(_){}finally{setLoading('saveToolBtn',false);}
-}
-
-function deleteTool(id,name){
-  document.getElementById('deleteConfirmText').textContent=`Are you sure you want to delete "${name}"? This action cannot be undone.`;
-  document.getElementById('confirmDeleteBtn').onclick=async()=>{
-    try{
-      await apiFetch(`${API}/tools.php?id=${id}`,{method:'DELETE'});
-      showToast(`"${name}" deleted.`,'warning');
-      closeModal('confirmDeleteModal');
-      loadTools();
-    }catch(_){}
-  };
-  openModal('confirmDeleteModal');
 }
 
 function showQR(code){
@@ -374,7 +385,6 @@ function renderBorrowersTable(borrowers){
         ${isAdmin?`
         <button class="action-btn edit" title="Edit" onclick="editBorrower(${b.id})"><i class="fas fa-edit"></i></button>
         <button class="action-btn" title="${b.is_active==0?'Activate':'Deactivate'}" onclick="toggleBorrowerActive(${b.id},${b.is_active==0?'true':'false'})"><i class="fas fa-power-off"></i></button>
-        <button class="action-btn delete" title="Delete" onclick="deleteBorrower(${b.id},'${b.full_name.replace(/'/g,"\\'")}',${b.active_borrows})"><i class="fas fa-trash"></i></button>
         `:'<span style="color:var(--gray-400);font-size:12px">—</span>'}
       </div></td>
     </tr>`).join('');
@@ -490,21 +500,6 @@ async function saveBorrower(){
     loadBorrowers();
     loadBorrowerSelect();
   }catch(_){ }finally{setLoading('saveBorrowerBtn',false);}
-}
-
-function deleteBorrower(id,name,activeBorrows){
-  if(activeBorrows>0){showToast(`Cannot delete "${name}" — they have ${activeBorrows} active borrow(s).`,'error');return;}
-  document.getElementById('deleteConfirmText').textContent=`Are you sure you want to delete "${name}"? This action cannot be undone.`;
-  document.getElementById('confirmDeleteBtn').onclick=async()=>{
-    try{
-      await apiFetch(`${API}/borrowers.php?id=${id}`,{method:'DELETE'});
-      showToast(`"${name}" removed.`,'warning');
-      closeModal('confirmDeleteModal');
-      loadBorrowers();
-      loadBorrowerSelect();
-    }catch(_){}
-  };
-  openModal('confirmDeleteModal');
 }
 
 async function exportBorrowersCSV(){
@@ -790,8 +785,35 @@ async function loadReports(){
   }catch(_){}
 }
 
-function downloadReport(type){
-  window.open(`${API}/reports.php?type=${type}&download=1`,'_blank');
+let currentReportType = null;
+
+async function viewReport(type, title){
+  currentReportType = type;
+  document.getElementById('reportModalTitle').textContent = title;
+  document.getElementById('reportModalCount').textContent = '';
+  document.getElementById('reportTableHead').innerHTML = '';
+  document.getElementById('reportTableBody').innerHTML = '<tr class="empty-row"><td><span class="spinner dark"></span> Loading…</td></tr>';
+  openModal('reportModal');
+  try{
+    const res = await apiFetch(`${API}/reports.php?type=${type}`);
+    const {columns, rows} = res.data;
+    document.getElementById('reportTableHead').innerHTML = `<tr>${columns.map(c=>`<th>${c}</th>`).join('')}</tr>`;
+    if(!rows.length){
+      document.getElementById('reportTableBody').innerHTML = `<tr class="empty-row"><td colspan="${columns.length}">No data for this report.</td></tr>`;
+    }else{
+      document.getElementById('reportTableBody').innerHTML = rows.map(r=>
+        `<tr>${r.map(v=>`<td>${v===null||v===''?'—':v}</td>`).join('')}</tr>`
+      ).join('');
+    }
+    document.getElementById('reportModalCount').textContent = `${rows.length} record${rows.length!==1?'s':''}`;
+  }catch(_){
+    document.getElementById('reportTableBody').innerHTML = '<tr class="empty-row"><td>Failed to load report.</td></tr>';
+  }
+}
+
+function exportCurrentReport(){
+  if(!currentReportType) return;
+  window.open(`${API}/reports.php?type=${currentReportType}&download=1`,'_blank');
 }
 
 /* ───────────────────────────────────────────────────────────
