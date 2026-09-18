@@ -378,6 +378,9 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
               <option value="Cookware">Cookware</option>
               <option value="Measuring Tools">Measurement</option>
               <option value="Accessories">Accessories</option>
+              <option value="Dinnerware">Dinnerware</option>
+              <option value="Cutleries">Cutleries</option>
+              <option value="Glassware">Glassware</option>
             </select>
           </div>
           <div class="filter-group"><input type="text" class="filter-input" id="toolSearchFilter" placeholder="Search tools…"></div>
@@ -745,11 +748,14 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
       <div class="form-group"><label class="field-label">Tool Code *</label><input type="text" id="t_code" class="form-input-full" placeholder="e.g., TL-XXX-001"></div>
       <div class="form-group"><label class="field-label">Category *</label>
         <select id="t_category" class="form-input-full">
-          <option value="">Select category</option>
-          <option value="Electronics">Electronics</option>
-          <option value="Mechanical">Mechanical</option>
-          <option value="Measurement">Measurement</option>
-          <option value="Accessories">Accessories</option>
+              <option value="">All Categories</option>
+              <option value="Utensils">Utensils</option>
+              <option value="Cookware">Cookware</option>
+              <option value="Measuring Tools">Measurement</option>
+              <option value="Accessories">Accessories</option>
+              <option value="Dinnerware">Dinnerware</option>
+              <option value="Cutleries">Cutleries</option>
+              <option value="Glassware">Glassware</option>
         </select>
       </div>
       <div class="form-group"><label class="field-label">Total Quantity *</label><input type="number" id="t_qty" class="form-input-full" placeholder="Enter quantity" min="1"></div>

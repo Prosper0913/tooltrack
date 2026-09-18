@@ -228,7 +228,7 @@ async function loadTools(){
   }catch(_){document.getElementById('toolsTableBody').innerHTML='<tr class="empty-row"><td colspan="8">Failed to load tools.</td></tr>';}
 }
 
-const CAT_ICONS={Utensils:'fa-solid fa-utensils',Mechanical:'fas fa-cogs',Measurement:'fas fa-ruler',Accessories:'fa-solid fa-utensils'};
+const CAT_ICONS={Utensils:'fa-solid fa-utensils',Mechanical:'fas fa-cogs',Measurement:'fas fa-ruler',Accessories:'fa-solid fa-utensils' ,Dinnerware:'fa-solid fa-plate-utensils',Cutleries:'fa-solid fa-utensils',Glassware:'fa-solid fa-wine-glass'};
 
 function renderToolsTable(tools){
   const tbody=document.getElementById('toolsTableBody');
