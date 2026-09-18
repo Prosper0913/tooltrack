@@ -86,7 +86,7 @@ function navigateTo(page){
   if(page==='tools')     loadTools();
   if(page==='borrowers') loadBorrowers();
   if(page==='borrow')    { loadBorrowerSelect(); loadBorrowHistory(); }
-  if(page==='return')    loadReturnHistory();
+  if(page==='return')    { loadReturnHistory(); loadActiveBorrowsForReturn(); }
   if(page==='reports')   loadReports();
   if(page==='users')     loadUsers();
 }
@@ -635,18 +635,29 @@ function setScanStatus(statusId,textId,text,type){
 }
 
 function loadCameras(selectId){
-  Html5Qrcode.getCameras().then(devices=>{
+  return Html5Qrcode.getCameras().then(devices=>{
     const sel=document.getElementById(selectId);
     sel.innerHTML='';
-    if(!devices||!devices.length){sel.innerHTML='<option value="">No cameras detected</option>';return;}
+    if(!devices||!devices.length){sel.innerHTML='<option value="">No cameras detected</option>';return devices;}
     devices.forEach((d,i)=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.label||`Camera ${i+1}`;sel.appendChild(o);});
-  }).catch(()=>document.getElementById(selectId).innerHTML='<option value="">Camera access denied</option>');
+    return devices;
+  }).catch(err=>{document.getElementById(selectId).innerHTML='<option value="">Camera access denied</option>';throw err;});
 }
 
-function startBorrowScanner(){
-  const camId=document.getElementById('borrowCameraSelect').value;
-  if(!camId){setScanStatus('borrowScanStatus','borrowScanStatusText','No camera selected.','error');return;}
+async function startBorrowScanner(){
   if(borrowScanning)return;
+  const sel=document.getElementById('borrowCameraSelect');
+  if(!sel.value){
+    // Cameras haven't been enumerated yet — this is the FIRST point
+    // the browser's camera permission prompt appears, deliberately
+    // deferred until the user actually presses this button rather
+    // than on page load.
+    setScanStatus('borrowScanStatus','borrowScanStatusText','Requesting camera access…','scanning');
+    try{ await loadCameras('borrowCameraSelect'); }
+    catch(_){ setScanStatus('borrowScanStatus','borrowScanStatusText','Camera access denied.','error'); return; }
+  }
+  const camId=sel.value;
+  if(!camId){setScanStatus('borrowScanStatus','borrowScanStatusText','No camera available.','error');return;}
   document.getElementById('borrowReader').style.display='block';
   document.getElementById('borrowStartBtn').style.display='none';
   document.getElementById('borrowStopBtn').style.display='flex';
@@ -682,16 +693,24 @@ function onBorrowerNameInput(){
 }
 
 function startReturnScanner(){
-  const camId=document.getElementById('returnCameraSelect').value;
-  if(!camId){setScanStatus('returnScanStatus','returnScanStatusText','No camera selected.','error');return;}
   if(returnScanning)return;
-  document.getElementById('returnReader').style.display='block';
-  document.getElementById('returnStartBtn').style.display='none';
-  document.getElementById('returnStopBtn').style.display='flex';
-  setScanStatus('returnScanStatus','returnScanStatusText','Scanning…','scanning');
-  returnQr.start(camId,{fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};},aspectRatio:1},
-    decoded=>{document.getElementById('returnToolId').value=decoded;document.getElementById('clearReturnToolBtn').classList.add('visible');setScanStatus('returnScanStatus','returnScanStatusText','✓ Scanned: '+decoded,'success');stopReturnScanner();},()=>{}
-  ).then(()=>returnScanning=true).catch(err=>{setScanStatus('returnScanStatus','returnScanStatusText','Cannot start: '+err,'error');resetReturnScannerUI();});
+  const sel=document.getElementById('returnCameraSelect');
+  const go=(camId)=>{
+    if(!camId){setScanStatus('returnScanStatus','returnScanStatusText','No camera available.','error');return;}
+    document.getElementById('returnReader').style.display='block';
+    document.getElementById('returnStartBtn').style.display='none';
+    document.getElementById('returnStopBtn').style.display='flex';
+    setScanStatus('returnScanStatus','returnScanStatusText','Scanning…','scanning');
+    returnQr.start(camId,{fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};},aspectRatio:1},
+      decoded=>{document.getElementById('returnToolId').value=decoded;document.getElementById('clearReturnToolBtn').classList.add('visible');matchReturnToolCode(decoded);setScanStatus('returnScanStatus','returnScanStatusText','✓ Scanned: '+decoded,'success');stopReturnScanner();},()=>{}
+    ).then(()=>returnScanning=true).catch(err=>{setScanStatus('returnScanStatus','returnScanStatusText','Cannot start: '+err,'error');resetReturnScannerUI();});
+  };
+  if(!sel.value){
+    setScanStatus('returnScanStatus','returnScanStatusText','Requesting camera access…','scanning');
+    loadCameras('returnCameraSelect').then(()=>go(sel.value)).catch(()=>setScanStatus('returnScanStatus','returnScanStatusText','Camera access denied.','error'));
+    return;
+  }
+  go(sel.value);
 }
 function stopReturnScanner(){if(!returnScanning){resetReturnScannerUI();return;}returnQr.stop().then(()=>{returnScanning=false;resetReturnScannerUI();}).catch(()=>{returnScanning=false;resetReturnScannerUI();});}
 function resetReturnScannerUI(){document.getElementById('returnReader').style.display='none';document.getElementById('returnStartBtn').style.display='flex';document.getElementById('returnStopBtn').style.display='none';}
@@ -702,10 +721,94 @@ function returnScanUploadedImage(event){
   document.getElementById('returnUploadPreview').style.display='flex';
   setScanStatus('returnScanStatus','returnScanStatusText','Reading QR from image…','scanning');
   const fs=new Html5Qrcode('returnReader');
-  fs.scanFile(file,true).then(decoded=>{document.getElementById('returnToolId').value=decoded;document.getElementById('clearReturnToolBtn').classList.add('visible');setScanStatus('returnScanStatus','returnScanStatusText','✓ Scanned from image: '+decoded,'success');}).catch(()=>setScanStatus('returnScanStatus','returnScanStatusText','Could not read QR. Try a clearer photo.','error')).finally(()=>event.target.value='');
+  fs.scanFile(file,true).then(decoded=>{document.getElementById('returnToolId').value=decoded;document.getElementById('clearReturnToolBtn').classList.add('visible');matchReturnToolCode(decoded);setScanStatus('returnScanStatus','returnScanStatusText','✓ Scanned from image: '+decoded,'success');}).catch(()=>setScanStatus('returnScanStatus','returnScanStatusText','Could not read QR. Try a clearer photo.','error')).finally(()=>event.target.value='');
 }
-function onReturnToolIdInput(){document.getElementById('clearReturnToolBtn').classList.toggle('visible',document.getElementById('returnToolId').value.length>0);}
-function clearReturnToolId(){document.getElementById('returnToolId').value='';document.getElementById('clearReturnToolBtn').classList.remove('visible');document.getElementById('returnUploadPreview').style.display='none';setScanStatus('returnScanStatus','returnScanStatusText','','');}
+let activeBorrowsCache=[]; // loaded whenever the Return page is opened
+
+async function loadActiveBorrowsForReturn(){
+  const sel=document.getElementById('returnSelect');
+  sel.innerHTML='<option value="">Loading active borrows…</option>';
+  try{
+    const res=await apiFetch(`${API}/transactions.php?type=borrow&status=active&per_page=200`);
+    activeBorrowsCache=(res.data||[]).filter(t=>(t.qty-t.qty_returned)>0);
+    renderReturnSelectOptions(activeBorrowsCache);
+  }catch(_){
+    sel.innerHTML='<option value="">Failed to load — try again</option>';
+  }
+}
+
+function renderReturnSelectOptions(list){
+  const sel=document.getElementById('returnSelect');
+  const prevValue=sel.value;
+  if(!list.length){
+    sel.innerHTML='<option value="">Nothing currently borrowed</option>';
+    return;
+  }
+  sel.innerHTML='<option value="">Select the item being returned…</option>'+
+    list.map(t=>{
+      const outstanding=t.qty-t.qty_returned;
+      const overdue=t.due_date && t.due_date<new Date().toISOString().slice(0,10);
+      return `<option value="${t.id}">${t.tool_name} (${t.tool_code}) — ${t.borrower||'Unknown'} · Qty ${outstanding} · Due ${t.due_date||'—'}${overdue?' ⚠ overdue':''}</option>`;
+    }).join('');
+  if(list.some(t=>String(t.id)===prevValue)) sel.value=prevValue;
+}
+
+function onReturnSelectChange(){
+  const id=document.getElementById('returnSelect').value;
+  const hint=document.getElementById('returnSelectHint');
+  if(!id){hint.textContent='';return;}
+  const t=activeBorrowsCache.find(x=>String(x.id)===id);
+  if(!t){hint.textContent='';return;}
+  const outstanding=t.qty-t.qty_returned;
+  document.getElementById('returnToolId').value=t.tool_code;
+  document.getElementById('clearReturnToolBtn').classList.toggle('visible',true);
+  const qtyInput=document.getElementById('returnQty');
+  qtyInput.max=outstanding;
+  qtyInput.value=outstanding;
+  hint.textContent=`Borrowed by ${t.borrower||'Unknown'} · due ${t.due_date||'—'} · ${outstanding} unit(s) outstanding`;
+}
+
+// Called whenever the Tool Code field changes (typed, scanned, or from
+// an uploaded QR image) — cross-checks it against the currently loaded
+// list of active (not-yet-returned) borrows instead of trusting the
+// typed/scanned code blindly. This is what prevents recording a return
+// for a tool that was never actually borrowed.
+function matchReturnToolCode(code){
+  const hint=document.getElementById('returnSelectHint');
+  code=(code||'').trim().toLowerCase();
+  if(!code){document.getElementById('returnSelect').value='';hint.textContent='';return;}
+  const matches=activeBorrowsCache.filter(t=>t.tool_code.toLowerCase()===code);
+  if(matches.length===0){
+    document.getElementById('returnSelect').value='';
+    renderReturnSelectOptions(activeBorrowsCache);
+    hint.textContent='⚠ No active borrow found for this tool code — nothing to return.';
+  }else if(matches.length===1){
+    renderReturnSelectOptions(activeBorrowsCache);
+    document.getElementById('returnSelect').value=String(matches[0].id);
+    onReturnSelectChange();
+  }else{
+    // Same tool code borrowed by more than one person at once — let
+    // staff pick the right one instead of guessing.
+    renderReturnSelectOptions(matches);
+    document.getElementById('returnSelect').value='';
+    hint.textContent=`⚠ ${matches.length} active borrows share this tool code — pick the correct one below.`;
+  }
+}
+
+function onReturnToolIdInput(){
+  const val=document.getElementById('returnToolId').value;
+  document.getElementById('clearReturnToolBtn').classList.toggle('visible',val.length>0);
+  matchReturnToolCode(val);
+}
+function clearReturnToolId(){
+  document.getElementById('returnToolId').value='';
+  document.getElementById('clearReturnToolBtn').classList.remove('visible');
+  document.getElementById('returnUploadPreview').style.display='none';
+  setScanStatus('returnScanStatus','returnScanStatusText','','');
+  document.getElementById('returnSelect').value='';
+  document.getElementById('returnSelectHint').textContent='';
+  renderReturnSelectOptions(activeBorrowsCache);
+}
 function onBorrowToolIdInput(){document.getElementById('clearBorrowToolBtn').classList.toggle('visible',document.getElementById('borrowToolId').value.length>0);}
 function clearBorrowToolId(){document.getElementById('borrowToolId').value='';document.getElementById('clearBorrowToolBtn').classList.remove('visible');document.getElementById('borrowUploadPreview').style.display='none';setScanStatus('borrowScanStatus','borrowScanStatusText','','');}
 
@@ -763,14 +866,15 @@ async function handleBorrow(){
 }
 
 async function handleReturn(){
+  const borrowTxnId=document.getElementById('returnSelect').value;
   const toolCode=document.getElementById('returnToolId').value.trim();
   const condition=document.getElementById('returnCondition').value;
   const notes=document.getElementById('returnNotes').value.trim();
   const qty=parseInt(document.getElementById('returnQty').value)||1;
-  if(!toolCode){showToast('Please scan a QR code or enter a Tool Code.','error');return;}
+  if(!borrowTxnId){showToast('Select the borrowed item you\'re returning from the list — it must match an active borrow.','error');return;}
   setLoading('returnSubmitBtn',true);
   try{
-    const res=await apiFetch(`${API}/transactions.php`,{method:'POST',body:JSON.stringify({type:'return',tool_code:toolCode,condition,notes,qty})});
+    const res=await apiFetch(`${API}/transactions.php`,{method:'POST',body:JSON.stringify({type:'return',borrow_txn_id:borrowTxnId,tool_code:toolCode,condition,notes,qty})});
     const d=res.data;
     const condLabels={good:'Good condition',minor:'Minor wear',damaged:'Damaged'};
     showToast(`Return recorded — ${d.txn_id}`,'success');
@@ -778,8 +882,10 @@ async function handleReturn(){
     loadReturnHistory();
     loadBorrowHistory(); // refresh borrow history status
     clearReturnToolId();
+    document.getElementById('returneeName').value='';
     document.getElementById('returnCondition').value='good';
     document.getElementById('returnNotes').value='';
+    loadActiveBorrowsForReturn(); // this item is (partially or fully) returned now — refresh the list
   }catch(_){}finally{setLoading('returnSubmitBtn',false);}
 }
 
@@ -993,8 +1099,12 @@ function deleteUser(id,name){
 window.addEventListener('load',()=>{
   borrowQr=new Html5Qrcode('borrowReader');
   returnQr=new Html5Qrcode('returnReader');
-  loadCameras('borrowCameraSelect');
-  loadCameras('returnCameraSelect');
+  // Deliberately NOT calling loadCameras() here — Html5Qrcode.getCameras()
+  // triggers the browser's camera permission prompt, and we only want
+  // that happening when the user actually presses "Camera" (see
+  // startBorrowScanner/startReturnScanner), not on every page load.
+  document.getElementById('borrowCameraSelect').innerHTML='<option value="">Press \'Camera\' to enable</option>';
+  document.getElementById('returnCameraSelect').innerHTML='<option value="">Press \'Camera\' to enable</option>';
   const due=new Date(Date.now()+7*24*60*60*1000);
   document.getElementById('borrowDueDate').valueAsDate=due;
   loadCurrentUser();

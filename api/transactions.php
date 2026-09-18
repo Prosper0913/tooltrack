@@ -41,7 +41,7 @@ if ($method === 'GET') {
     $sql = "
         SELECT
            t.id, t.txn_id, t.type, t.status, t.`condition`, t.notes,
-            t.due_date, t.returned_at, t.created_at,
+            t.due_date, t.returned_at, t.created_at, t.qty, t.qty_returned,
             tl.name  AS tool_name,
             tl.code  AS tool_code,
             b.full_name AS borrower,
@@ -157,33 +157,59 @@ if ($method === 'POST') {
 
     // ── RETURN ──────────────────────────────────────────────
     if ($type === 'return') {
-       
-        $tool_code = trim($b['tool_code'] ?? '');
-        $condition = trim($b['condition'] ?? 'good');
-        $notes     = trim($b['notes']     ?? '');
-        $qty       = max(1, (int)($b['qty'] ?? 1));
 
-        if (!$tool_code) fail('tool_code is required.');
+        $borrow_txn_id = (int)($b['borrow_txn_id'] ?? 0);
+        $tool_code     = trim($b['tool_code'] ?? '');
+        $condition     = trim($b['condition'] ?? 'good');
+        $notes         = trim($b['notes']     ?? '');
+        $qty           = max(1, (int)($b['qty'] ?? 1));
+
+        if (!$borrow_txn_id && !$tool_code) fail('borrow_txn_id or tool_code is required.');
         if (!in_array($condition, ['good', 'minor', 'damaged'])) {
             fail("condition must be good, minor, or damaged.");
         }
 
-        // Find tool
-        $ts = $db->prepare('SELECT * FROM tools WHERE code = ?');
-        $ts->execute([$tool_code]);
-        $tool = $ts->fetch();
-        if (!$tool) fail("Tool '$tool_code' not found.");
+        if ($borrow_txn_id) {
+            // Preferred path (used by the Return page's "Borrowed Item"
+            // picker): match the EXACT loan being returned, not just
+            // "whichever active borrow of this tool code is newest" —
+            // that old fallback could credit the wrong borrower's
+            // return when the same tool (by code) was checked out to
+            // more than one person at once (a tool can have qty > 1).
+            $active = $db->prepare("
+                SELECT t.*, b.full_name AS borrower_name
+                FROM transactions t
+                LEFT JOIN borrowers b ON b.id = t.borrower_id
+                WHERE t.id = ? AND t.type = 'borrow' AND t.status = 'active'
+            ");
+            $active->execute([$borrow_txn_id]);
+            $borrow = $active->fetch();
+            if (!$borrow) fail('This borrow record is no longer active (it may have already been returned) — refresh the Return page and try again.');
 
-        // Find the active borrow transaction for this tool
-        $active = $db->prepare("
-            SELECT t.*, b.full_name AS borrower_name
-            FROM transactions t
-            LEFT JOIN borrowers b ON b.id = t.borrower_id
-            WHERE t.tool_id = ? AND t.type = 'borrow' AND t.status = 'active'
-            ORDER BY t.created_at DESC LIMIT 1
-        ");
-       $active->execute([$tool['id']]);
-        $borrow = $active->fetch();
+            $ts = $db->prepare('SELECT * FROM tools WHERE id = ?');
+            $ts->execute([$borrow['tool_id']]);
+            $tool = $ts->fetch();
+            if (!$tool) fail('Tool for this borrow record was not found.');
+        } else {
+            // Legacy fallback (e.g. a direct API call with no specific
+            // loan chosen) — matches the most recent active borrow of
+            // this tool code. Kept for backward compatibility only;
+            // the app's own UI always sends borrow_txn_id now.
+            $ts = $db->prepare('SELECT * FROM tools WHERE code = ?');
+            $ts->execute([$tool_code]);
+            $tool = $ts->fetch();
+            if (!$tool) fail("Tool '$tool_code' not found.");
+
+            $active = $db->prepare("
+                SELECT t.*, b.full_name AS borrower_name
+                FROM transactions t
+                LEFT JOIN borrowers b ON b.id = t.borrower_id
+                WHERE t.tool_id = ? AND t.type = 'borrow' AND t.status = 'active'
+                ORDER BY t.created_at DESC LIMIT 1
+            ");
+            $active->execute([$tool['id']]);
+            $borrow = $active->fetch();
+        }
 
         if ($borrow) {
             $outstanding = (int)$borrow['qty'] - (int)$borrow['qty_returned'];

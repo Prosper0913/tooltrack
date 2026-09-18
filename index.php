@@ -442,7 +442,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
           <div class="br-card-header"><div class="br-card-header-icon borrow"><i class="fas fa-hand-holding"></i></div><h3>Borrow Tool</h3></div>
           <div class="br-card-body">
             <label class="field-label"><i class="fas fa-video"></i> Camera Device</label>
-            <select class="form-input-full" id="borrowCameraSelect"><option value="">Loading cameras…</option></select>
+            <select class="form-input-full" id="borrowCameraSelect"><option value="">Press "Camera" to enable</option></select>
 
             <div class="scanner-zone">
               <div class="scanner-zone-label"><i class="fas fa-qrcode"></i> QR Code Scanner</div>
@@ -523,7 +523,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
           <div class="br-card-header"><div class="br-card-header-icon return"><i class="fas fa-undo"></i></div><h3>Return Tool</h3></div>
           <div class="br-card-body">
             <label class="field-label"><i class="fas fa-video"></i> Camera Device</label>
-            <select class="form-input-full" id="returnCameraSelect"><option value="">Loading cameras…</option></select>
+            <select class="form-input-full" id="returnCameraSelect"><option value="">Press "Camera" to enable</option></select>
 
             <div class="scanner-zone">
               <div class="scanner-zone-label"><i class="fas fa-qrcode"></i> QR Code Scanner</div>
@@ -541,12 +541,18 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
             <div class="or-divider">or enter manually</div>
             <label class="field-label">Tool Code</label>
             <div class="input-group">
-              <input type="text" class="form-input-full" id="returnToolId" placeholder="e.g. TL-DMM-001" oninput="onReturnToolIdInput()">
+              <input type="text" class="form-input-full" id="returnToolId" placeholder="e.g. SP-101" oninput="onReturnToolIdInput()">
              <button class="clear-btn" id="clearReturnToolBtn" onclick="clearReturnToolId()"><i class="fas fa-times-circle"></i></button>
             </div>
-           
+
+            <label class="field-label">Borrowed Item *</label>
+            <select class="form-input-full" id="returnSelect" onchange="onReturnSelectChange()">
+              <option value="">Loading active borrows…</option>
+            </select>
+            <p id="returnSelectHint" style="font-size:12px;color:var(--gray-500);margin:-8px 0 12px;min-height:16px"></p>
+
             <label class="field-label">Quantity to Return</label>
-           
+
             <input type="number" class="form-input-full" id="returnQty" min="1" value="1">
             <label class="field-label">Returnee Name *</label>
             <input type="text" class="form-input-full" id="returneeName" placeholder="Enter name of person returning the tool">
