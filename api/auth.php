@@ -2,8 +2,9 @@
 // ================================================================
 //  api/auth.php
 //
-//  GET  → returns logged-in user info for sidebar
-//  POST → login  { username, password }  → sets session, returns user
+//  GET    → returns logged-in user info for sidebar
+//  POST   → login  { username, password }  → sets session, returns user
+//  PUT    → change own password  { current_password, new_password }
 //  DELETE → logout
 // ================================================================
 require_once __DIR__ . '/config.php';
@@ -22,6 +23,23 @@ function userPayload(array $user): array {
         'role'     => $user['role'],
         'initials' => substr($initials, 0, 2),
     ];
+}
+
+// Verifies $attempt against $stored. Handles the legacy-plaintext seed
+// row transparently — if $stored isn't a real hash yet, a correct
+// plaintext match silently upgrades it to bcrypt (same logic used to
+// live only in the login flow; change-password needed it too, so it's
+// shared here now).
+function verifyAndMaybeUpgrade(PDO $db, int $userId, string $stored, string $attempt): bool {
+    $isHashed = password_get_info($stored)['algo'] !== null;
+    if ($isHashed) return password_verify($attempt, $stored);
+
+    $ok = hash_equals($stored, $attempt);
+    if ($ok) {
+        $newHash = password_hash($attempt, PASSWORD_DEFAULT);
+        $db->prepare('UPDATE users SET password = ? WHERE id = ?')->execute([$newHash, $userId]);
+    }
+    return $ok;
 }
 
 // ── GET: return current session user ──────────────────────────
@@ -49,29 +67,7 @@ if ($method === 'POST') {
     $stmt->execute([$username]);
     $user = $stmt->fetch();
 
-    if (!$user) {
-        fail('Invalid username or password.', 401);
-    }
-
-    $stored     = $user['password'];
-    $isHashed   = password_get_info($stored)['algo'] !== null; // bcrypt/argon hashes are self-describing
-    $passwordOk = false;
-
-    if ($isHashed) {
-        $passwordOk = password_verify($password, $stored);
-    } else {
-        // Legacy plaintext row (pre-migration seed data). Accept once,
-        // then transparently upgrade it to a real hash so this branch
-        // is never hit again for this account.
-        $passwordOk = hash_equals($stored, $password);
-        if ($passwordOk) {
-            $newHash = password_hash($password, PASSWORD_DEFAULT);
-            $upd = $db->prepare('UPDATE users SET password = ? WHERE id = ?');
-            $upd->execute([$newHash, $user['id']]);
-        }
-    }
-
-    if (!$passwordOk) {
+    if (!$user || !verifyAndMaybeUpgrade($db, (int)$user['id'], $user['password'], $password)) {
         fail('Invalid username or password.', 401);
     }
 
@@ -83,6 +79,32 @@ if ($method === 'POST') {
     $_SESSION['user_role'] = $user['role'];
 
     ok(userPayload($user));
+}
+
+// ── PUT: change own password (Settings panel) ───────────────────
+if ($method === 'PUT') {
+    $user = requireLogin();
+    $b = body();
+    $current = trim($b['current_password'] ?? '');
+    $new     = trim($b['new_password']     ?? '');
+
+    if (!$current || !$new) fail('Current and new password are required.');
+    if (strlen($new) < 8) fail('New password must be at least 8 characters.');
+
+    $db   = getDB();
+    $stmt = $db->prepare('SELECT password FROM users WHERE id = ?');
+    $stmt->execute([$user['id']]);
+    $row = $stmt->fetch();
+    if (!$row) fail('User not found.', 404);
+
+    if (!verifyAndMaybeUpgrade($db, $user['id'], $row['password'], $current)) {
+        fail('Current password is incorrect.', 401);
+    }
+
+    $newHash = password_hash($new, PASSWORD_DEFAULT);
+    $db->prepare('UPDATE users SET password = ? WHERE id = ?')->execute([$newHash, $user['id']]);
+
+    ok(['message' => 'Password updated.']);
 }
 
 // ── DELETE: logout ────────────────────────────────────────────

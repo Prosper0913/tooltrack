@@ -85,7 +85,7 @@ function navigateTo(page){
   if(page==='dashboard') loadDashboard();
   if(page==='tools')     loadTools();
   if(page==='borrowers') loadBorrowers();
-  if(page==='borrow')    { loadBorrowerSelect(); loadBorrowHistory(); }
+  if(page==='borrow')    { loadBorrowerSelect(); loadBorrowHistory(); loadToolsForBorrow(); }
   if(page==='return')    { loadReturnHistory(); loadActiveBorrowsForReturn(); }
   if(page==='reports')   loadReports();
   if(page==='users')     loadUsers();
@@ -117,6 +117,87 @@ async function loadCurrentUser(){
 document.getElementById('logoutBtn').addEventListener('click',()=>{
   if(confirm('Are you sure you want to logout?')) window.location.href='logout.php';
 });
+
+/* ───────────────────────────────────────────────────────────
+   NOTIFICATIONS (overdue borrows + low-stock tools)
+─────────────────────────────────────────────────────────── */
+async function loadNotifications(){
+  const list=document.getElementById('notifList');
+  const badge=document.getElementById('notifBadge');
+  try{
+    const [overdueRes,lowStockRes]=await Promise.all([
+      apiFetch(`${API}/reports.php?type=overdue`),
+      apiFetch(`${API}/tools.php?status=low-stock&per_page=50`)
+    ]);
+    const overdueRows=overdueRes.data.rows||[]; // [txn_id, code, name, borrower, id_number, due_date, created_at]
+    const lowStock=lowStockRes.data||[];
+    const count=overdueRows.length+lowStock.length;
+
+    if(count>0){badge.textContent=count>9?'9+':count;badge.style.display='flex';}
+    else{badge.style.display='none';}
+
+    if(!count){
+      list.innerHTML='<div style="padding:20px;text-align:center;color:var(--gray-400);font-size:13px">All caught up — nothing overdue or low on stock.</div>';
+      return;
+    }
+    let html='';
+    overdueRows.forEach(r=>{
+      html+=`<div class="notif-item" style="padding:10px 8px;border-radius:8px;cursor:pointer" onclick="navigateTo('borrow');toggleNotifPanel(true)">
+        <div style="font-size:13px;font-weight:600;color:var(--red-600,#dc2626)"><i class="fas fa-exclamation-triangle" style="margin-right:6px"></i>${r[2]} overdue</div>
+        <div style="font-size:12px;color:var(--gray-500)">${r[3]} · due ${r[5]}</div>
+      </div>`;
+    });
+    lowStock.forEach(t=>{
+      html+=`<div class="notif-item" style="padding:10px 8px;border-radius:8px;cursor:pointer" onclick="navigateTo('tools');toggleNotifPanel(true)">
+        <div style="font-size:13px;font-weight:600;color:var(--amber-600,#d97706)"><i class="fas fa-box-open" style="margin-right:6px"></i>${t.name} low on stock</div>
+        <div style="font-size:12px;color:var(--gray-500)">${t.available} available (min ${t.min_stock})</div>
+      </div>`;
+    });
+    list.innerHTML=html;
+  }catch(_){
+    list.innerHTML='<div style="padding:20px;text-align:center;color:var(--gray-400);font-size:13px">Failed to load notifications.</div>';
+  }
+}
+
+function toggleNotifPanel(forceClose){
+  const panel=document.getElementById('notifPanel');
+  const willShow = forceClose ? false : (panel.style.display==='none');
+  panel.style.display = willShow ? 'block' : 'none';
+  if(willShow) loadNotifications();
+}
+document.addEventListener('click',(e)=>{
+  const panel=document.getElementById('notifPanel');
+  const btn=document.getElementById('notifBtn');
+  if(panel.style.display!=='none' && !panel.contains(e.target) && !btn.contains(e.target)){
+    panel.style.display='none';
+  }
+});
+
+/* ───────────────────────────────────────────────────────────
+   SETTINGS (self-service password change)
+─────────────────────────────────────────────────────────── */
+function openSettingsModal(){
+  document.getElementById('s_current').value='';
+  document.getElementById('s_new').value='';
+  document.getElementById('s_confirm').value='';
+  openModal('settingsModal');
+}
+
+async function saveSettings(){
+  const current=document.getElementById('s_current').value;
+  const next=document.getElementById('s_new').value;
+  const confirmVal=document.getElementById('s_confirm').value;
+  if(!current||!next||!confirmVal){showToast('All fields are required.','error');return;}
+  if(next.length<8){showToast('New password must be at least 8 characters.','error');return;}
+  if(next!==confirmVal){showToast('New password and confirmation don\'t match.','error');return;}
+  setLoading('saveSettingsBtn',true);
+  try{
+    await apiFetch(`${API}/auth.php`,{method:'PUT',body:JSON.stringify({current_password:current,new_password:next})});
+    showToast('Password updated.');
+    closeModal('settingsModal');
+  }catch(_){}
+  setLoading('saveSettingsBtn',false);
+}
 
 
 let borrowChart=null, monthlyChart=null, categoryChart=null;
@@ -228,7 +309,7 @@ async function loadTools(){
   }catch(_){document.getElementById('toolsTableBody').innerHTML='<tr class="empty-row"><td colspan="8">Failed to load tools.</td></tr>';}
 }
 
-const CAT_ICONS={Utensils:'fa-solid fa-utensils',Mechanical:'fas fa-cogs',Measurement:'fas fa-ruler',Accessories:'fa-solid fa-utensils' ,Dinnerware:'fa-solid fa-plate-utensils',Cutleries:'fa-solid fa-utensils',Glassware:'fa-solid fa-wine-glass'};
+const CAT_ICONS={Utensils:'fa-solid fa-utensils',Cookware:'fas fa-fire-burner','Measuring Tools':'fas fa-ruler',Accessories:'fas fa-toolbox',Dinnerware:'fas fa-plate-wheat',Cutleries:'fas fa-utensils',Glassware:'fas fa-martini-glass'};
 
 function renderToolsTable(tools){
   const tbody=document.getElementById('toolsTableBody');
@@ -278,6 +359,8 @@ async function toggleToolActive(id, makeActive, name){
 }
 
 function statusLabel(s){return{available:'Available',borrowed:'Borrowed','low-stock':'Low Stock'}[s]||s;}
+
+function applyToolFilters(){toolsCurrentPage=1;loadTools();}
 
 function clearToolFilters(){
   document.getElementById('toolStatusFilter').value='';
@@ -492,6 +575,8 @@ async function toggleBorrowerActive(id, makeActive){
   }catch(_){}
 }
 
+function applyBorrowerFilters(){borrowersCurrentPage=1;loadBorrowers();}
+
 function clearBorrowerFilters(){
   document.getElementById('borrowerTypeFilter').value='';
   document.getElementById('borrowerSearchFilter').value='';
@@ -663,7 +748,7 @@ async function startBorrowScanner(){
   document.getElementById('borrowStopBtn').style.display='flex';
   setScanStatus('borrowScanStatus','borrowScanStatusText','Scanning — point camera at QR code…','scanning');
   borrowQr.start(camId,{fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};},aspectRatio:1},
-    decoded=>{document.getElementById('borrowToolId').value=decoded;document.getElementById('clearBorrowToolBtn').classList.add('visible');setScanStatus('borrowScanStatus','borrowScanStatusText','✓ Scanned: '+decoded,'success');stopBorrowScanner();},()=>{}
+    decoded=>{document.getElementById('borrowToolId').value=decoded;document.getElementById('clearBorrowToolBtn').classList.add('visible');matchBorrowToolCode(decoded);setScanStatus('borrowScanStatus','borrowScanStatusText','✓ Scanned: '+decoded,'success');stopBorrowScanner();},()=>{}
   ).then(()=>borrowScanning=true).catch(err=>{setScanStatus('borrowScanStatus','borrowScanStatusText','Cannot start: '+err,'error');resetBorrowScannerUI();});
 }
 function stopBorrowScanner(){if(!borrowScanning){resetBorrowScannerUI();return;}borrowQr.stop().then(()=>{borrowScanning=false;resetBorrowScannerUI();}).catch(()=>{borrowScanning=false;resetBorrowScannerUI();});}
@@ -675,7 +760,7 @@ function borrowScanUploadedImage(event){
   document.getElementById('borrowUploadPreview').style.display='flex';
   setScanStatus('borrowScanStatus','borrowScanStatusText','Reading QR from image…','scanning');
   const fs=new Html5Qrcode('borrowReader');
-  fs.scanFile(file,true).then(decoded=>{document.getElementById('borrowToolId').value=decoded;document.getElementById('clearBorrowToolBtn').classList.add('visible');setScanStatus('borrowScanStatus','borrowScanStatusText','✓ Scanned from image: '+decoded,'success');}).catch(()=>setScanStatus('borrowScanStatus','borrowScanStatusText','Could not read QR. Try a clearer photo.','error')).finally(()=>event.target.value='');
+  fs.scanFile(file,true).then(decoded=>{document.getElementById('borrowToolId').value=decoded;document.getElementById('clearBorrowToolBtn').classList.add('visible');matchBorrowToolCode(decoded);setScanStatus('borrowScanStatus','borrowScanStatusText','✓ Scanned from image: '+decoded,'success');}).catch(()=>setScanStatus('borrowScanStatus','borrowScanStatusText','Could not read QR. Try a clearer photo.','error')).finally(()=>event.target.value='');
 }
 
 function onBorrowerSelectChange(){
@@ -809,8 +894,78 @@ function clearReturnToolId(){
   document.getElementById('returnSelectHint').textContent='';
   renderReturnSelectOptions(activeBorrowsCache);
 }
-function onBorrowToolIdInput(){document.getElementById('clearBorrowToolBtn').classList.toggle('visible',document.getElementById('borrowToolId').value.length>0);}
-function clearBorrowToolId(){document.getElementById('borrowToolId').value='';document.getElementById('clearBorrowToolBtn').classList.remove('visible');document.getElementById('borrowUploadPreview').style.display='none';setScanStatus('borrowScanStatus','borrowScanStatusText','','');}
+let allToolsCache=[]; // loaded whenever the Borrow page is opened
+
+async function loadToolsForBorrow(){
+  const sel=document.getElementById('borrowToolSelect');
+  sel.innerHTML='<option value="">Loading tools…</option>';
+  try{
+    const res=await apiFetch(`${API}/tools.php?per_page=200`);
+    allToolsCache=(res.data||[]).filter(t=>t.is_active!=0); // retired tools can't be borrowed
+    renderBorrowToolOptions();
+  }catch(_){
+    sel.innerHTML='<option value="">Failed to load — try again</option>';
+  }
+}
+
+function renderBorrowToolOptions(){
+  const sel=document.getElementById('borrowToolSelect');
+  const prevValue=sel.value;
+  if(!allToolsCache.length){sel.innerHTML='<option value="">No tools found</option>';return;}
+  sel.innerHTML='<option value="">Select a tool…</option>'+
+    allToolsCache.map(t=>
+      `<option value="${t.code}" ${t.available<=0?'disabled':''}>${t.name} (${t.code}) — ${t.available>0?`${t.available} available`:'out of stock'}</option>`
+    ).join('');
+  if(allToolsCache.some(t=>t.code===prevValue)) sel.value=prevValue;
+}
+
+function onBorrowToolSelectChange(){
+  const code=document.getElementById('borrowToolSelect').value;
+  const hint=document.getElementById('borrowToolSelectHint');
+  document.getElementById('borrowToolId').value=code;
+  document.getElementById('clearBorrowToolBtn').classList.toggle('visible',code.length>0);
+  if(!code){hint.textContent='';return;}
+  const t=allToolsCache.find(x=>x.code===code);
+  if(!t){hint.textContent='';return;}
+  const qtyInput=document.getElementById('borrowQty');
+  qtyInput.max=t.available;
+  if(parseInt(qtyInput.value)>t.available) qtyInput.value=Math.max(1,t.available);
+  hint.textContent=`${t.available} unit(s) available · ${t.category}`;
+}
+
+// Called whenever the Tool Code field changes (typed, scanned, or from
+// an uploaded QR image) — keeps it in sync with the dropdown above so
+// either input method lands you on the same selected tool.
+function matchBorrowToolCode(code){
+  const hint=document.getElementById('borrowToolSelectHint');
+  code=(code||'').trim();
+  if(!code){document.getElementById('borrowToolSelect').value='';hint.textContent='';return;}
+  const t=allToolsCache.find(x=>x.code.toLowerCase()===code.toLowerCase());
+  if(!t){
+    document.getElementById('borrowToolSelect').value='';
+    hint.textContent='⚠ No matching tool found for this code.';
+  }else if(t.available<=0){
+    document.getElementById('borrowToolSelect').value='';
+    hint.textContent=`⚠ "${t.name}" is out of stock — nothing available to borrow.`;
+  }else{
+    document.getElementById('borrowToolSelect').value=t.code;
+    onBorrowToolSelectChange();
+  }
+}
+
+function onBorrowToolIdInput(){
+  const val=document.getElementById('borrowToolId').value;
+  document.getElementById('clearBorrowToolBtn').classList.toggle('visible',val.length>0);
+  matchBorrowToolCode(val);
+}
+function clearBorrowToolId(){
+  document.getElementById('borrowToolId').value='';
+  document.getElementById('clearBorrowToolBtn').classList.remove('visible');
+  document.getElementById('borrowUploadPreview').style.display='none';
+  setScanStatus('borrowScanStatus','borrowScanStatusText','','');
+  document.getElementById('borrowToolSelect').value='';
+  document.getElementById('borrowToolSelectHint').textContent='';
+}
 
 /* ───────────────────────────────────────────────────────────
    10. BORROW / RETURN SUBMISSION
@@ -862,6 +1017,7 @@ async function handleBorrow(){
     document.getElementById('borrowerIdNumberInput').value='';
     document.getElementById('borrowerTypeInput').value='';
     document.getElementById('borrowNotes').value='';
+    loadToolsForBorrow(); // availability just changed — refresh the dropdown
   }catch(_){}finally{setLoading('borrowSubmitBtn',false);}
 }
 
@@ -1109,4 +1265,5 @@ window.addEventListener('load',()=>{
   document.getElementById('borrowDueDate').valueAsDate=due;
   loadCurrentUser();
   loadDashboard();
+  loadNotifications();
 });

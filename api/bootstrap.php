@@ -24,7 +24,20 @@ define('ROLE_ADMIN', 'Admin');
 define('ROLE_STAFF',  'Staff');
 
 // ── Session (must start before any output) ─────────────────────
+// Scope the session cookie to this app's own path. Without this, PHP's
+// default session.cookie_path is "/" — meaning if ToolTrack is deployed
+// as a subfolder alongside another PHP app on the same domain (e.g.
+// yourhost.com/tooltrack next to another app at yourhost.com/), both
+// apps would share the exact same session cookie across the whole
+// domain, and their $_SESSION data could collide or bleed together.
+// Also uses cookie_httponly (JS can't read the session cookie) and
+// samesite=Lax (a reasonable default CSRF mitigation) while we're at it.
 if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'path'     => '/tooltrack/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     session_start();
 }
 

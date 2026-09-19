@@ -309,9 +309,13 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
     </div>
     <div class="header-right">
       <div class="search-box"><i class="fas fa-search"></i><input type="text" id="globalSearch" placeholder="Search tools, borrowers…"></div>
-      <div style="display:flex;gap:8px">
-        <button class="header-btn"><i class="fas fa-bell"></i><span class="badge"></span></button>
-        <button class="header-btn"><i class="fas fa-cog"></i></button>
+      <div style="display:flex;gap:8px;position:relative">
+        <button class="header-btn" id="notifBtn" onclick="toggleNotifPanel()"><i class="fas fa-bell"></i><span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;min-width:16px;height:16px;padding:0 4px;background:var(--danger,#ef4444);color:#fff;border-radius:9px;border:2px solid #fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;line-height:1"></span></button>
+        <button class="header-btn" onclick="openSettingsModal()"><i class="fas fa-cog"></i></button>
+        <div id="notifPanel" style="display:none;position:absolute;top:44px;right:0;width:340px;max-height:420px;overflow:auto;background:#fff;border:1px solid var(--gray-200,#e5e7eb);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.15);z-index:50">
+          <div style="padding:12px 16px;font-weight:600;border-bottom:1px solid var(--gray-100,#f0f0f0)">Notifications</div>
+          <div id="notifList" style="padding:8px"></div>
+        </div>
       </div>
       <div class="date-display"><i class="fas fa-calendar"></i><span id="currentDate"></span></div>
     </div>
@@ -384,7 +388,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
             </select>
           </div>
           <div class="filter-group"><input type="text" class="filter-input" id="toolSearchFilter" placeholder="Search tools…"></div>
-          <button class="filter-btn apply" onclick="loadTools()">Apply</button>
+          <button class="filter-btn apply" onclick="applyToolFilters()">Apply</button>
           <button class="filter-btn clear" onclick="clearToolFilters()">Clear</button>
         </div>
         <div class="table-container">
@@ -419,10 +423,11 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
               <option value="Student">Student</option>
               <option value="Faculty">Faculty</option>
               <option value="Staff">Staff</option>
+              <option value="Guest">Guest</option>
             </select>
           </div>
           <div class="filter-group"><input type="text" class="filter-input" id="borrowerSearchFilter" placeholder="Search by name or ID…"></div>
-          <button class="filter-btn apply" onclick="loadBorrowers()">Apply</button>
+          <button class="filter-btn apply" onclick="applyBorrowerFilters()">Apply</button>
           <button class="filter-btn clear" onclick="clearBorrowerFilters()">Clear</button>
         </div>
         <div class="table-container">
@@ -463,9 +468,15 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
             <div class="or-divider">or enter manually</div>
             <label class="field-label">Tool Code</label>
             <div class="input-group">
-              <input type="text" class="form-input-full" id="borrowToolId" placeholder="e.g. TL-DMM-001" oninput="onBorrowToolIdInput()">
+              <input type="text" class="form-input-full" id="borrowToolId" placeholder="e.g. SP-101" oninput="onBorrowToolIdInput()">
               <button class="clear-btn" id="clearBorrowToolBtn" onclick="clearBorrowToolId()"><i class="fas fa-times-circle"></i></button>
             </div>
+
+            <label class="field-label">Tool *</label>
+            <select class="form-input-full" id="borrowToolSelect" onchange="onBorrowToolSelectChange()">
+              <option value="">Loading tools…</option>
+            </select>
+            <p id="borrowToolSelectHint" style="font-size:12px;color:var(--gray-500);margin:-8px 0 12px;min-height:16px"></p>
 
             <label class="field-label">Quantity</label>
             <input type="number" class="form-input-full" id="borrowQty" min="1" value="1">
@@ -748,14 +759,14 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
       <div class="form-group"><label class="field-label">Tool Code *</label><input type="text" id="t_code" class="form-input-full" placeholder="e.g., TL-XXX-001"></div>
       <div class="form-group"><label class="field-label">Category *</label>
         <select id="t_category" class="form-input-full">
-              <option value="">All Categories</option>
-              <option value="Utensils">Utensils</option>
-              <option value="Cookware">Cookware</option>
-              <option value="Measuring Tools">Measurement</option>
-              <option value="Accessories">Accessories</option>
-              <option value="Dinnerware">Dinnerware</option>
-              <option value="Cutleries">Cutleries</option>
-              <option value="Glassware">Glassware</option>
+          <option value="">All Categories</option>
+          <option value="Utensils">Utensils</option>
+          <option value="Cookware">Cookware</option>
+          <option value="Measuring Tools">Measurement</option>
+          <option value="Accessories">Accessories</option>
+          <option value="Dinnerware">Dinnerware</option>
+          <option value="Cutleries">Cutleries</option>
+          <option value="Glassware">Glassware</option>
         </select>
       </div>
       <div class="form-group"><label class="field-label">Total Quantity *</label><input type="number" id="t_qty" class="form-input-full" placeholder="Enter quantity" min="1"></div>
@@ -872,6 +883,28 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
     </div>
     <div class="modal-footer">
       <button class="btn btn-gray" onclick="closeModal('borrowerHistoryModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL: Account Settings
+═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3 class="modal-title">Account Settings</h3>
+      <button class="modal-close" onclick="closeModal('settingsModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px">Change your password. This only affects your own account.</p>
+      <div class="form-group"><label class="field-label">Current Password *</label><input type="password" id="s_current" class="form-input-full" autocomplete="current-password"></div>
+      <div class="form-group"><label class="field-label">New Password *</label><input type="password" id="s_new" class="form-input-full" placeholder="At least 8 characters" autocomplete="new-password"></div>
+      <div class="form-group"><label class="field-label">Confirm New Password *</label><input type="password" id="s_confirm" class="form-input-full" autocomplete="new-password"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeModal('settingsModal')">Cancel</button>
+      <button class="btn btn-blue" id="saveSettingsBtn" onclick="saveSettings()">Update Password</button>
     </div>
   </div>
 </div>
