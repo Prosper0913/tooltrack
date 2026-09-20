@@ -89,6 +89,11 @@ body{font-family:'Inter',sans-serif;background:var(--gray-50);color:var(--gray-8
 .header-btn{width:40px;height:40px;border-radius:10px;border:none;background:var(--gray-100);color:var(--gray-600);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:all .2s;}
 .header-btn:hover{background:var(--gray-200);}
 .header-btn .badge{position:absolute;top:6px;right:6px;width:8px;height:8px;background:var(--danger);border-radius:50%;border:2px solid white;}
+.header-left{display:flex;align-items:center;gap:14px;}
+.mobile-menu-btn{display:none;width:40px;height:40px;border-radius:10px;border:none;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.mobile-menu-btn:hover{background:rgba(255,255,255,.22);}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(17,10,40,.5);z-index:150;}
+.sidebar-overlay.active{display:block;}
 .date-display{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--gray-50);border-radius:10px;font-size:13px;color:var(--gray-600);}
 .date-display i{color:var(--primary);}
 .page-content{padding:32px;}
@@ -318,10 +323,12 @@ body{font-family:'Inter',sans-serif;background:var(--gray-50);color:var(--gray-8
   .br-layout{grid-template-columns:1fr}
 }
 @media(max-width:768px){
-  .sidebar{transform:translateX(-100%)}
+  .sidebar{transform:translateX(-100%);transition:transform .3s ease;z-index:200;}
+  .sidebar.open{transform:translateX(0);}
   .main-content{margin-left:0}
   .stats-grid{grid-template-columns:1fr}
   .reports-grid{grid-template-columns:1fr}
+  .mobile-menu-btn{display:flex}
 }
 /* ── Sidebar: royal purple ── */
 .sidebar{
@@ -379,3 +386,122 @@ body{font-family:'Inter',sans-serif;background:var(--gray-50);color:var(--gray-8
   color:#fff;
 }
 .date-display i{color:#fff;}
+/* ═══════════════════════════════════════════════════════════
+   MOBILE POLISH — a broader pass beyond the sidebar drawer above.
+   Breakpoints: 768px (tablet/phone), 640px (small phone/modals),
+   480px (very small phone).
+═══════════════════════════════════════════════════════════ */
+
+/* ── Responsive tables: below 768px every .data-table becomes a
+   stacked list of cards instead of a horizontally-scrolling table.
+   This is the actual fix for "have to scroll sideways to read a
+   report" — cells wrap to their own line with a label instead of
+   staying in fixed-width columns that don't fit a phone screen.
+   Every dynamically-rendered <td> in js/app.js now carries a
+   data-label attribute that this rule reads via ::before. ── */
+@media(max-width:768px){
+  .table-container{overflow-x:visible;-webkit-overflow-scrolling:touch;}
+  .data-table thead{display:none;}
+  .data-table,.data-table tbody,.data-table tr,.data-table td{display:block;width:100%;}
+  .data-table tr{margin-bottom:12px;border:1px solid var(--gray-100);border-radius:12px;overflow:hidden;background:#fff;}
+  .data-table tr:hover td{background:transparent;}
+  .data-table td{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid var(--gray-50);text-align:right;font-size:13px;}
+  .data-table td:last-child{border-bottom:none;}
+  .data-table td::before{content:attr(data-label);font-size:11px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.03em;text-align:left;padding-right:12px;flex-shrink:0;}
+  /* The first column is usually a self-descriptive identity block
+     (avatar + name) — a label next to it is redundant, so drop it
+     and let that cell take the full row width instead. */
+  .data-table tr td:first-child{justify-content:flex-start;}
+  .data-table tr td:first-child::before{content:none;}
+  .data-table td .action-btns{justify-content:flex-end;flex-wrap:wrap;}
+  .empty-row{border:none !important;box-shadow:none !important;}
+  .empty-row td{display:block !important;text-align:center;justify-content:center;}
+  .empty-row td::before{content:none;}
+}
+
+/* ── Header ── */
+@media(max-width:768px){
+  .header{padding:0 16px;}
+  .search-box{width:150px;}
+  .date-display{display:none;}
+  .breadcrumb{display:none;}
+  .page-title{font-size:17px;}
+}
+@media(max-width:480px){
+  .search-box{display:none;}
+  #notifPanel{position:fixed !important;left:16px !important;right:16px !important;top:64px !important;width:auto !important;max-width:none !important;}
+}
+
+/* ── Page padding — desktop's generous 32px/24px padding eats too
+   much of a phone's already-small width. ── */
+@media(max-width:768px){
+  .page-content{padding:16px;}
+  .card-body{padding:16px;}
+  .br-card-body{padding:16px;}
+  .card-header{padding:16px;}
+  .modal-body{padding:16px;}
+  .modal-header{padding:16px;}
+  .modal-footer{padding:12px 16px;}
+}
+
+/* ── Card headers: title + action buttons stack instead of
+   squeezing onto one row and overflowing. ── */
+@media(max-width:640px){
+  .card-header{flex-direction:column;align-items:stretch;gap:12px;}
+  .card-actions{width:100%;}
+  .card-actions .card-btn{flex:1;justify-content:center;}
+}
+
+/* ── Filter bars: each filter takes the full row instead of a
+   cramped inline strip. ── */
+@media(max-width:640px){
+  .filter-bar{padding:12px 16px;gap:10px;}
+  .filter-group{width:100%;}
+  .filter-group .filter-select{flex:1;width:100%;}
+  .filter-input{width:100%;}
+  .filter-btn{flex:1;}
+}
+
+/* ── Pagination: stack instead of cramming info + buttons on one
+   line (buttons were starting to wrap mid-number on narrow phones). ── */
+@media(max-width:480px){
+  .pagination{flex-direction:column;gap:10px;align-items:stretch;text-align:center;padding:12px 16px;}
+}
+
+/* ── Modals: keep clear of the screen edges, and stack footer
+   buttons full-width instead of squeezing two buttons onto one
+   cramped row. ── */
+@media(max-width:640px){
+  .modal-overlay{padding:12px;}
+  .modal{width:100%;max-height:88vh;}
+  .modal-footer{flex-wrap:wrap;}
+  .modal-footer .btn{flex:1;min-width:0;}
+}
+
+/* ── Reports grid / cards ── */
+@media(max-width:480px){
+  .report-card{padding:16px;gap:14px;}
+  .report-icon{width:48px;height:48px;font-size:20px;}
+}
+
+/* ── Scanner controls: slightly tighter so Camera/Stop/Upload fit
+   without wrapping awkwardly on a small phone. ── */
+@media(max-width:480px){
+  .btn-scan,.btn-upload{min-width:0;font-size:12px;padding:10px;}
+  .scanner-zone{padding:12px;}
+}
+
+/* ── Sidebar drawer: comfortable width on very narrow phones (a
+   fixed 260px can be most of a small screen's width) and momentum
+   scrolling for a long nav list. ── */
+@media(max-width:360px){
+  .sidebar{width:88vw;}
+}
+.sidebar-nav{-webkit-overflow-scrolling:touch;}
+
+/* ── Stat cards: a bit tighter on very small phones. ── */
+@media(max-width:480px){
+  .stats-grid{gap:14px;}
+  .stat-card{padding:16px;}
+  .stat-value{font-size:26px;}
+}

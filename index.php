@@ -295,6 +295,8 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
   </div>
 </aside>
 
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
 <!-- ═══════════════════════════════════════════════════════════
      MAIN CONTENT
 ═══════════════════════════════════════════════════════════ -->
@@ -302,6 +304,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
 
   <header class="header">
     <div class="header-left">
+      <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleSidebar()" aria-label="Menu"><i class="fas fa-bars"></i></button>
       <div>
         <h1 class="page-title" id="pageTitle">Dashboard</h1>
         <div class="breadcrumb"><a href="#">Home</a><i class="fas fa-chevron-right" style="font-size:10px"></i><span id="breadcrumbPage">Dashboard</span></div>
@@ -312,7 +315,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
       <div style="display:flex;gap:8px;position:relative">
         <button class="header-btn" id="notifBtn" onclick="toggleNotifPanel()"><i class="fas fa-bell"></i><span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;min-width:16px;height:16px;padding:0 4px;background:var(--danger,#ef4444);color:#fff;border-radius:9px;border:2px solid #fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;line-height:1"></span></button>
         <button class="header-btn" onclick="openSettingsModal()"><i class="fas fa-cog"></i></button>
-        <div id="notifPanel" style="display:none;position:absolute;top:44px;right:0;width:340px;max-height:420px;overflow:auto;background:#fff;border:1px solid var(--gray-200,#e5e7eb);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.15);z-index:50">
+        <div id="notifPanel" style="display:none;position:absolute;top:44px;right:0;width:340px;max-width:calc(100vw - 32px);max-height:420px;overflow:auto;background:#fff;border:1px solid var(--gray-200,#e5e7eb);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.15);z-index:50">
           <div style="padding:12px 16px;font-weight:600;border-bottom:1px solid var(--gray-100,#f0f0f0)">Notifications</div>
           <div id="notifList" style="padding:8px"></div>
         </div>

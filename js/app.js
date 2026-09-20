@@ -69,7 +69,18 @@ document.querySelectorAll('.nav-item[data-page]').forEach(item=>{
   item.addEventListener('click',()=>navigateTo(item.getAttribute('data-page')));
 });
 
+function toggleSidebar(){
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('active');
+}
+function closeSidebar(){
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+}
+
 function navigateTo(page){
+  closeSidebar(); // on mobile, picking a page should close the drawer
+
   // Camera stays open (and the browser's camera indicator stays lit)
   // if you switch tabs without hitting Stop first — stop it here so
   // leaving the page always releases the camera.
@@ -317,17 +328,17 @@ function renderToolsTable(tools){
   const isAdmin = window.CURRENT_ROLE === 'Admin';
   tbody.innerHTML=tools.map(t=>`
     <tr${t.is_active==0?' style="opacity:.55"':''}>
-      <td><div class="tool-item">
+      <td data-label="Tool"><div class="tool-item">
         <div class="tool-icon"><i class="${CAT_ICONS[t.category]||'fas fa-box'}"></i></div>
         <div class="tool-info"><h4>${t.name}${t.is_active==0?' <span class="status-badge low-stock" style="margin-left:6px"><span class="status-dot"></span>Retired</span>':''}</h4><span>${t.description||t.category}</span></div>
       </div></td>
-      <td><code>${t.code}</code></td>
-      <td>${t.category}</td>
-      <td>${t.quantity}</td>
-      <td>${t.available}</td>
-      <td>${t.min_stock}</td>
-      <td><span class="status-badge ${t.status}"><span class="status-dot"></span>${statusLabel(t.status)}</span></td>
-      <td><div class="action-btns">
+      <td data-label="Code"><code>${t.code}</code></td>
+      <td data-label="Category">${t.category}</td>
+      <td data-label="Total Qty">${t.quantity}</td>
+      <td data-label="Available">${t.available}</td>
+      <td data-label="Min Stock">${t.min_stock}</td>
+      <td data-label="Status"><span class="status-badge ${t.status}"><span class="status-dot"></span>${statusLabel(t.status)}</span></td>
+      <td data-label="Actions"><div class="action-btns">
         <button class="action-btn view" title="QR Code" onclick="showQR('${t.code}','${t.name.replace(/'/g,"\\'")}')"><i class="fas fa-qrcode"></i></button>
         <button class="action-btn edit" title="Edit" onclick="editTool(${t.id})"><i class="fas fa-edit"></i></button>
         ${isAdmin?`<button class="action-btn" title="${t.is_active==0?'Reactivate':'Retire'}" onclick="toggleToolActive(${t.id},${t.is_active==0?'true':'false'},'${t.name.replace(/'/g,"\\'")}')"><i class="fas fa-power-off"></i></button>`:''}
@@ -498,18 +509,18 @@ function renderBorrowersTable(borrowers){
   const isAdmin = window.CURRENT_ROLE === 'Admin';
   tbody.innerHTML=borrowers.map(b=>`
     <tr${b.is_active==0?' style="opacity:.55"':''}>
-      <td><div class="tool-item" style="cursor:pointer" onclick="viewBorrowerHistory(${b.id})" title="View history">
+      <td data-label="Borrower"><div class="tool-item" style="cursor:pointer" onclick="viewBorrowerHistory(${b.id})" title="View history">
         <div class="user-avatar" style="width:40px;height:40px;font-size:13px">${getInitials(b.full_name)}</div>
         <div class="tool-info"><h4>${b.full_name}${b.is_active==0?' <span class="status-badge low-stock" style="margin-left:6px"><span class="status-dot"></span>Inactive</span>':''}</h4><span>${b.type}</span></div>
       </div></td>
-      <td><code>${b.id_number}</code></td>
-      <td>${b.type}</td>
-      <td>${b.course||'—'}</td>
-      <td>${b.section_name||'—'}</td>
-      <td>${b.email||'—'}</td>
-      <td><span class="status-badge ${b.active_borrows>0?'borrowed':'available'}"><span class="status-dot"></span>${b.active_borrows} item${b.active_borrows!==1?'s':''}</span></td>
-      <td>${b.total_borrows}</td>
-      <td><div class="action-btns">
+      <td data-label="ID Number"><code>${b.id_number}</code></td>
+      <td data-label="Type">${b.type}</td>
+      <td data-label="Course">${b.course||'—'}</td>
+      <td data-label="Section">${b.section_name||'—'}</td>
+      <td data-label="Contact">${b.email||'—'}</td>
+      <td data-label="Active Borrows"><span class="status-badge ${b.active_borrows>0?'borrowed':'available'}"><span class="status-dot"></span>${b.active_borrows} item${b.active_borrows!==1?'s':''}</span></td>
+      <td data-label="Total Borrows">${b.total_borrows}</td>
+      <td data-label="Actions"><div class="action-btns">
         <button class="action-btn view" title="View History" onclick="viewBorrowerHistory(${b.id})"><i class="fas fa-clock-rotate-left"></i></button>
         ${isAdmin?`
         <button class="action-btn edit" title="Edit" onclick="editBorrower(${b.id})"><i class="fas fa-edit"></i></button>
@@ -554,12 +565,12 @@ async function viewBorrowerHistory(id){
     };
     document.getElementById('bhHistoryBody').innerHTML=history.map(r=>`
       <tr>
-        <td><span class="status-badge ${r.type==='borrow'?'borrowed':'available'}"><span class="status-dot"></span>${r.type==='borrow'?'Borrow':'Return'}</span></td>
-        <td>${r.tool_name||'—'} <code style="font-size:11px">${r.tool_code||''}</code></td>
-        <td>${r.qty}</td>
-        <td>${r.type==='borrow'?(r.due_date||'—'):(r.returned_at?new Date(r.returned_at).toLocaleDateString():'—')}</td>
-        <td>${flagBadge(r)}</td>
-        <td>${new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</td>
+        <td data-label="Event"><span class="status-badge ${r.type==='borrow'?'borrowed':'available'}"><span class="status-dot"></span>${r.type==='borrow'?'Borrow':'Return'}</span></td>
+        <td data-label="Tool">${r.tool_name||'—'} <code style="font-size:11px">${r.tool_code||''}</code></td>
+        <td data-label="Qty">${r.qty}</td>
+        <td data-label="Due / Returned">${r.type==='borrow'?(r.due_date||'—'):(r.returned_at?new Date(r.returned_at).toLocaleDateString():'—')}</td>
+        <td data-label="Status">${flagBadge(r)}</td>
+        <td data-label="Date">${new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</td>
       </tr>`).join('');
   }catch(_){
     document.getElementById('bhHistoryBody').innerHTML='<tr class="empty-row"><td colspan="6">Failed to load history.</td></tr>';
@@ -1069,13 +1080,13 @@ async function loadBorrowHistory(){
     if(!rows.length){tbody.innerHTML='<tr class="empty-row"><td colspan="7">No borrow transactions yet.</td></tr>';return;}
     tbody.innerHTML=rows.map(t=>`
       <tr>
-        <td><code>${t.txn_id}</code></td>
-        <td>${t.tool_code}</td>
-        <td>${t.tool_name||'—'}</td>
-        <td>${t.borrower||'—'}</td>
-        <td>${new Date(t.created_at).toLocaleString()}</td>
-        <td>${t.due_date||'—'}</td>
-        <td><span class="status-badge ${t.status==='active'?'borrowed':'returned'}"><span class="status-dot"></span>${t.status==='active'?'Active':'Returned'}</span></td>
+        <td data-label="Txn ID"><code>${t.txn_id}</code></td>
+        <td data-label="Tool Code">${t.tool_code}</td>
+        <td data-label="Tool Name">${t.tool_name||'—'}</td>
+        <td data-label="Borrower">${t.borrower||'—'}</td>
+        <td data-label="Date & Time">${new Date(t.created_at).toLocaleString()}</td>
+        <td data-label="Due Date">${t.due_date||'—'}</td>
+        <td data-label="Status"><span class="status-badge ${t.status==='active'?'borrowed':'returned'}"><span class="status-dot"></span>${t.status==='active'?'Active':'Returned'}</span></td>
       </tr>`).join('');
 
     // Update sidebar badge
@@ -1097,12 +1108,12 @@ async function loadReturnHistory(){
     const condLabel={good:'Good',minor:'Minor Wear',damaged:'Damaged'};
     tbody.innerHTML=rows.map(t=>`
       <tr>
-        <td><code>${t.txn_id}</code></td>
-        <td>${t.tool_code}</td>
-        <td>${t.returned_by||t.borrower||'—'}</td>
-        <td>${new Date(t.created_at).toLocaleString()}</td>
-        <td><span class="status-badge ${condBadge[t.condition]||'returned'}"><span class="status-dot"></span>${condLabel[t.condition]||t.condition}</span></td>
-        <td>${t.notes||'—'}</td>
+        <td data-label="Txn ID"><code>${t.txn_id}</code></td>
+        <td data-label="Tool Code">${t.tool_code}</td>
+        <td data-label="Returned By">${t.returned_by||t.borrower||'—'}</td>
+        <td data-label="Date & Time">${new Date(t.created_at).toLocaleString()}</td>
+        <td data-label="Condition"><span class="status-badge ${condBadge[t.condition]||'returned'}"><span class="status-dot"></span>${condLabel[t.condition]||t.condition}</span></td>
+        <td data-label="Notes">${t.notes||'—'}</td>
       </tr>`).join('');
   }catch(_){}
 }
@@ -1154,8 +1165,23 @@ async function viewReport(type, title){
     if(!rows.length){
       document.getElementById('reportTableBody').innerHTML = `<tr class="empty-row"><td colspan="${columns.length}">No data for this report.</td></tr>`;
     }else{
+      // On-screen only (the CSV export hits reports.php directly and gets
+      // the full untouched value) — a raw "2026-08-21 14:03:08" datetime
+      // takes up a lot of horizontal room in a table, especially the
+      // Transaction report which has three date-ish columns. Shorten
+      // anything that looks like a MySQL date/datetime for display.
+      const fmt=(v)=>{
+        if(v===null||v==='') return '—';
+        if(typeof v==='string' && /^\d{4}-\d{2}-\d{2}(\s\d{2}:\d{2}:\d{2})?$/.test(v)){
+          const d=new Date(v.replace(' ','T'));
+          if(!isNaN(d)) return v.includes(':')
+            ? d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})
+            : d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+        }
+        return v;
+      };
       document.getElementById('reportTableBody').innerHTML = rows.map(r=>
-        `<tr>${r.map(v=>`<td>${v===null||v===''?'—':v}</td>`).join('')}</tr>`
+        `<tr>${r.map((v,i)=>`<td data-label="${columns[i]}">${fmt(v)}</td>`).join('')}</tr>`
       ).join('');
     }
     document.getElementById('reportModalCount').textContent = `${rows.length} record${rows.length!==1?'s':''}`;
@@ -1201,11 +1227,11 @@ function renderUsersTable(users){
   if(!users.length){tbody.innerHTML='<tr class="empty-row"><td colspan="5">No users found.</td></tr>';return;}
   tbody.innerHTML=users.map(u=>`
     <tr>
-      <td>${u.name}</td>
-      <td><code>${u.username}</code></td>
-      <td><span class="status-badge ${u.role==='Admin'?'low-stock':'available'}"><span class="status-dot"></span>${u.role}</span></td>
-      <td>${new Date(u.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</td>
-      <td><div class="action-btns">
+      <td data-label="Name">${u.name}</td>
+      <td data-label="Username"><code>${u.username}</code></td>
+      <td data-label="Role"><span class="status-badge ${u.role==='Admin'?'low-stock':'available'}"><span class="status-dot"></span>${u.role}</span></td>
+      <td data-label="Created">${new Date(u.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</td>
+      <td data-label="Actions"><div class="action-btns">
         <button class="action-btn delete" title="Delete" onclick="deleteUser(${u.id},'${u.name.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
       </div></td>
     </tr>`).join('');
