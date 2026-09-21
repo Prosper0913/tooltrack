@@ -432,6 +432,7 @@
               <input type="checkbox" name="remember">
               Remember me
             </label>
+            <a href="#" id="forgotPassLink" style="font-size:12.5px;color:#c7b8ff;text-decoration:none">Forgot password?</a>
           </div>
 
           <div id="loginError" style="display:none; color:#ffb4a2; font-size:12.5px; margin-bottom:16px;"></div>
@@ -448,6 +449,24 @@
     </div>
 
     <div class="left-foot">&copy; 2026 FPST ToolTrack</div>
+  </div>
+
+  <!-- Forgot password: this app has no email/SMS server, so there's no
+       automated reset email — recovery is either an Admin resetting a
+       Staff account from the Users page, or (if the sole Admin is the
+       one locked out) reset_password.php run from the server's shell. -->
+  <div id="forgotPassOverlay" style="display:none;position:fixed;inset:0;background:rgba(10,5,30,.6);z-index:500;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;max-width:380px;width:90%;padding:28px;">
+      <h3 style="margin:0 0 12px;font-size:18px;color:#1a1330;">Forgot your password?</h3>
+      <p style="font-size:13.5px;color:#555;line-height:1.6;margin:0 0 10px;">
+        This system doesn't send reset emails. To get back in:
+      </p>
+      <ul style="font-size:13.5px;color:#555;line-height:1.7;margin:0 0 18px;padding-left:20px;">
+        <li>If you're <strong>Staff</strong>, ask an Admin to reset your password from the User Accounts page.</li>
+        <li>If you're the <strong>Admin</strong> and can't log in at all, whoever manages the server can run the recovery script (<code>reset_password.php</code>) from the machine hosting ToolTrack.</li>
+      </ul>
+      <button onclick="document.getElementById('forgotPassOverlay').style.display='none'" style="width:100%;padding:12px;border:none;border-radius:10px;background:#5b3df0;color:#fff;font-weight:600;cursor:pointer;">Got it</button>
+    </div>
   </div>
 
   <!-- Right: campus photo -->
@@ -468,6 +487,11 @@
 </div>
 
 <script>
+  document.getElementById('forgotPassLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('forgotPassOverlay').style.display = 'flex';
+  });
+
   const toggle = document.getElementById('togglePass');
   const pass = document.getElementById('password');
   const icon = document.getElementById('toggleIcon');

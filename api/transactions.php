@@ -40,7 +40,8 @@ if ($method === 'GET') {
 
     $sql = "
         SELECT
-           t.id, t.txn_id, t.type, t.status, t.`condition`, t.notes,
+           t.id, t.txn_id, t.type, t.status, t.is_late, t.`condition`, t.notes,
+            t.returnee_name,
             t.due_date, t.returned_at, t.created_at, t.qty, t.qty_returned,
             tl.name  AS tool_name,
             tl.code  AS tool_code,
@@ -93,15 +94,12 @@ if ($method === 'POST') {
         $borrower_id = (int)($b['borrower_id'] ?? 0);
         $due_date    = trim($b['due_date']     ?? '');
         $notes       = trim($b['notes']        ?? '');
-        $qty         = max(1, (int)($b['qty'] ?? 1));
+        $qty         = (int)($b['qty'] ?? 1);
 
         if (!$tool_code)   fail('tool_code is required.');
         if (!$borrower_id) fail('borrower_id is required.');
         if (!$due_date)    fail('due_date is required.');
-
-        if (!$tool_code)   fail('tool_code is required.');
-        if (!$borrower_id) fail('borrower_id is required.');
-        if (!$due_date)    fail('due_date is required.');
+        if ($qty < 1) fail('Quantity must be at least 1.');
 
         // Find tool
         $ts = $db->prepare('SELECT * FROM tools WHERE code = ?');
@@ -162,12 +160,15 @@ if ($method === 'POST') {
         $tool_code     = trim($b['tool_code'] ?? '');
         $condition     = trim($b['condition'] ?? 'good');
         $notes         = trim($b['notes']     ?? '');
-        $qty           = max(1, (int)($b['qty'] ?? 1));
+        $returnee_name = trim($b['returnee_name'] ?? '');
+        $qty           = (int)($b['qty'] ?? 1);
 
         if (!$borrow_txn_id && !$tool_code) fail('borrow_txn_id or tool_code is required.');
-        if (!in_array($condition, ['good', 'minor', 'damaged'])) {
-            fail("condition must be good, minor, or damaged.");
+        if (!in_array($condition, ['good', 'minor', 'damaged', 'missing'])) {
+            fail("condition must be good, minor, damaged, or missing.");
         }
+        if ($qty < 1) fail('Quantity must be at least 1.');
+        if (!$returnee_name) fail('Returnee name is required — who is handing the tool back?');
 
         if ($borrow_txn_id) {
             // Preferred path (used by the Return page's "Borrowed Item"
@@ -216,6 +217,18 @@ if ($method === 'POST') {
             if ($qty > $outstanding) fail("Cannot return $qty — only $outstanding unit(s) outstanding.");
         }
 
+        // A damaged or missing item is not fit to lend out again — it
+        // should NOT go back into the available pool, and should come
+        // off the total count entirely (the physical unit is gone/
+        // unusable). 'good' and 'minor wear' both go back into service.
+        $removeFromStock = in_array($condition, ['damaged', 'missing'], true);
+
+        // Was this specific loan returned after its due date? Computed
+        // once here and persisted on the borrow row (rather than only
+        // ever computed on the fly), so "late returns" can be filtered/
+        // reported on directly.
+        $isLate = $borrow && !empty($borrow['due_date']) && date('Y-m-d') > $borrow['due_date'];
+
         $db->beginTransaction();
         try {
             $txn_id = generateTxnId();
@@ -223,8 +236,8 @@ if ($method === 'POST') {
 
             // Insert return transaction
             $ins = $db->prepare('
-                INSERT INTO transactions (txn_id, type, tool_id, borrower_id, status, `condition`, notes, returned_at, qty)
-                VALUES (?, "return", ?, ?, "returned", ?, ?, ?, ?)
+                INSERT INTO transactions (txn_id, type, tool_id, borrower_id, status, `condition`, notes, returnee_name, returned_at, qty)
+                VALUES (?, "return", ?, ?, "returned", ?, ?, ?, ?, ?)
             ');
             $ins->execute([
                 $txn_id,
@@ -232,6 +245,7 @@ if ($method === 'POST') {
                 $borrow ? $borrow['borrower_id'] : null,
                 $condition,
                 $notes,
+                $returnee_name,
                 $now,
                 $qty,
             ]);
@@ -241,8 +255,8 @@ if ($method === 'POST') {
             if ($borrow) {
                 $newReturned    = (int)$borrow['qty_returned'] + $qty;
                 $fullyReturned  = $newReturned >= (int)$borrow['qty'];
-                $db->prepare("UPDATE transactions SET qty_returned=?, status=?, returned_at=? WHERE id=?")
-                   ->execute([$newReturned, $fullyReturned ? 'returned' : 'active', $fullyReturned ? $now : null, $borrow['id']]);
+                $db->prepare("UPDATE transactions SET qty_returned=?, status=?, returned_at=?, is_late=? WHERE id=?")
+                   ->execute([$newReturned, $fullyReturned ? 'returned' : 'active', $fullyReturned ? $now : null, $isLate ? 1 : 0, $borrow['id']]);
 
                 if ($fullyReturned) {
                     $db->prepare('UPDATE borrowers SET active_borrows = GREATEST(active_borrows - 1, 0) WHERE id = ?')
@@ -250,18 +264,31 @@ if ($method === 'POST') {
                 }
             }
 
-            // Restore available count
-            $db->prepare('UPDATE tools SET available = LEAST(available + ?, quantity) WHERE id = ?')
-               ->execute([$qty, $tool['id']]);
+            if ($removeFromStock) {
+                // Take it off the books entirely: total quantity drops,
+                // and it was never added back to `available` in the
+                // first place (it stays at whatever it was while on
+                // loan — i.e. still "out" — since it's not coming back).
+                $db->prepare('UPDATE tools SET quantity = GREATEST(quantity - ?, 0) WHERE id = ?')
+                   ->execute([$qty, $tool['id']]);
+            } else {
+                // Good / minor wear — back into the lendable pool.
+                $db->prepare('UPDATE tools SET available = LEAST(available + ?, quantity) WHERE id = ?')
+                   ->execute([$qty, $tool['id']]);
+            }
             $db->commit();
 
             ok([
-                'id'          => $txn_db_id,
-                'txn_id'      => $txn_id,
-                'tool_name'   => $tool['name'],
-                'tool_code'   => $tool['code'],
-                'returned_by' => $borrow['borrower_name'] ?? null,
-                'condition'   => $condition,
+                'id'            => $txn_db_id,
+                'txn_id'        => $txn_id,
+                'tool_name'     => $tool['name'],
+                'tool_code'     => $tool['code'],
+                'returned_by'   => $borrow['borrower_name'] ?? null,
+                'returnee_name' => $returnee_name,
+                'condition'     => $condition,
+                'is_late'       => $isLate,
+                'due_date'      => $borrow['due_date'] ?? null,
+                'removed_from_stock' => $removeFromStock,
             ], 201);
 
         } catch (\Throwable $e) {

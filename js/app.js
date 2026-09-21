@@ -96,8 +96,8 @@ function navigateTo(page){
   if(page==='dashboard') loadDashboard();
   if(page==='tools')     loadTools();
   if(page==='borrowers') loadBorrowers();
-  if(page==='borrow')    { loadBorrowerSelect(); loadBorrowHistory(); loadToolsForBorrow(); }
-  if(page==='return')    { loadReturnHistory(); loadActiveBorrowsForReturn(); }
+  if(page==='borrow')    { loadBorrowerSelect(); loadBorrowHistory(); loadToolsForBorrow(); loadRecentActivity('borrowActivityFeed','borrow'); }
+  if(page==='return')    { loadReturnHistory(); loadActiveBorrowsForReturn(); loadRecentActivity('returnActivityFeed','return'); }
   if(page==='reports')   loadReports();
   if(page==='users')     loadUsers();
 }
@@ -298,7 +298,7 @@ async function loadDashboard(){
           {label:'Returns',data:d.weekly_returns||[],borderColor:CHART_COLORS.green,backgroundColor:CHART_COLORS.greenFill,fill:true,tension:.4,borderWidth:2}
         ]
       },
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:20}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false}}}}
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:20}}},scales:{y:{beginAtZero:true,ticks:{precision:0},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false}}}}
     });
   }catch(_){}
 }
@@ -369,7 +369,7 @@ async function toggleToolActive(id, makeActive, name){
   }catch(_){}
 }
 
-function statusLabel(s){return{available:'Available',borrowed:'Borrowed','low-stock':'Low Stock'}[s]||s;}
+function statusLabel(s){return{available:'Available',borrowed:'Borrowed','low-stock':'Low Stock','out-of-stock':'Out of Stock'}[s]||s;}
 
 function applyToolFilters(){toolsCurrentPage=1;loadTools();}
 
@@ -378,6 +378,114 @@ function clearToolFilters(){
   document.getElementById('toolCategoryFilter').value='';
   document.getElementById('toolSearchFilter').value='';
   toolsCurrentPage=1; loadTools();
+}
+
+/* ───────────────────────────────────────────────────────────
+   REPLACEMENT REQUESTS (damaged/lost/worn-out tools — separate
+   from "+ Add New Tool", which is for genuinely new inventory)
+─────────────────────────────────────────────────────────── */
+async function openReplacementRequestModal(){
+  const sel=document.getElementById('rr_tool');
+  sel.innerHTML='<option value="">Loading tools…</option>';
+  document.getElementById('rr_customNameGroup').style.display='none';
+  document.getElementById('rr_customName').value='';
+  document.getElementById('rr_qty').value=1;
+  document.getElementById('rr_notes').value='';
+  document.getElementById('rr_reason').value='damaged';
+  openModal('replacementRequestModal');
+  try{
+    const res=await apiFetch(`${API}/tools.php?per_page=200`);
+    const tools=res.data||[];
+    sel.innerHTML='<option value="">Select an existing tool…</option>'+
+      '<option value="__custom__">Not in the list — I\'ll type the name</option>'+
+      tools.map(t=>`<option value="${t.id}">${t.name} (${t.code})</option>`).join('');
+  }catch(_){
+    sel.innerHTML='<option value="">Failed to load tools</option><option value="__custom__">Not in the list — I\'ll type the name</option>';
+  }
+}
+
+function onReplacementToolChange(){
+  const val=document.getElementById('rr_tool').value;
+  document.getElementById('rr_customNameGroup').style.display = (val==='__custom__') ? 'block' : 'none';
+}
+
+async function saveReplacementRequest(){
+  const toolSel=document.getElementById('rr_tool').value;
+  const customName=document.getElementById('rr_customName').value.trim();
+  const reason=document.getElementById('rr_reason').value;
+  const qty=parseInt(document.getElementById('rr_qty').value);
+  const notes=document.getElementById('rr_notes').value.trim();
+
+  if(!toolSel){showToast('Select a tool, or choose "Not in the list" to type one.','error');return;}
+  if(toolSel==='__custom__' && !customName){showToast('Enter the tool\'s name.','error');return;}
+  if(!qty||qty<1){showToast('Quantity needed must be at least 1.','error');return;}
+
+  const payload={reason,quantity_needed:qty,notes};
+  if(toolSel==='__custom__') payload.tool_name=customName;
+  else payload.tool_id=parseInt(toolSel);
+
+  setLoading('saveReplacementRequestBtn',true);
+  try{
+    await apiFetch(`${API}/replacement_requests.php`,{method:'POST',body:JSON.stringify(payload)});
+    showToast('Replacement request submitted.');
+    closeModal('replacementRequestModal');
+  }catch(_){}
+  setLoading('saveReplacementRequestBtn',false);
+}
+
+async function openReplacementRequestsModal(){
+  document.getElementById('rrListBody').innerHTML='<tr class="empty-row"><td colspan="7"><span class="spinner dark"></span> Loading…</td></tr>';
+  openModal('replacementRequestsListModal');
+  loadReplacementRequestsList();
+}
+
+const RR_REASON_LABEL={damaged:'Damaged',lost:'Lost',worn_out:'Worn Out',other:'Other'};
+const RR_STATUS_BADGE={pending:'borrowed',approved:'available',rejected:'low-stock',fulfilled:'returned'};
+
+async function loadReplacementRequestsList(){
+  const isAdmin=window.CURRENT_ROLE==='Admin';
+  try{
+    const res=await apiFetch(`${API}/replacement_requests.php`);
+    const rows=res.data||[];
+    if(!rows.length){
+      document.getElementById('rrListBody').innerHTML='<tr class="empty-row"><td colspan="7">No replacement requests yet.</td></tr>';
+      return;
+    }
+    document.getElementById('rrListBody').innerHTML=rows.map(r=>`
+      <tr>
+        <td data-label="Tool">${r.tool_name_snapshot}${r.tool_code?` <code style="font-size:11px">${r.tool_code}</code>`:''}</td>
+        <td data-label="Reason">${RR_REASON_LABEL[r.reason]||r.reason}</td>
+        <td data-label="Qty">${r.quantity_needed}</td>
+        <td data-label="Requested By">${r.requested_by_name||'—'}</td>
+        <td data-label="Notes">${r.notes||'—'}</td>
+        <td data-label="Status"><span class="status-badge ${RR_STATUS_BADGE[r.status]||'neutral'}"><span class="status-dot"></span>${r.status}</span></td>
+        <td data-label="Actions"><div class="action-btns">
+          ${(isAdmin && r.status==='pending')?`
+            <button class="action-btn" title="Approve" onclick="resolveReplacementRequest(${r.id},'approved')"><i class="fas fa-check"></i></button>
+            <button class="action-btn delete" title="Reject" onclick="resolveReplacementRequest(${r.id},'rejected')"><i class="fas fa-xmark"></i></button>
+          `:''}
+          ${(isAdmin && r.status==='approved')?`
+            <button class="action-btn" title="Mark Fulfilled (adds stock back)" onclick="resolveReplacementRequest(${r.id},'fulfilled')"><i class="fas fa-box"></i></button>
+          `:''}
+          ${(!isAdmin || r.status==='fulfilled' || r.status==='rejected')?'<span style="color:var(--gray-400);font-size:12px">—</span>':''}
+        </div></td>
+      </tr>`).join('');
+  }catch(_){
+    document.getElementById('rrListBody').innerHTML='<tr class="empty-row"><td colspan="7">Failed to load requests.</td></tr>';
+  }
+}
+
+async function resolveReplacementRequest(id,status){
+  let resolution_notes='';
+  if(status==='rejected'){
+    resolution_notes=prompt('Optional: reason for rejecting this request')||'';
+  }
+  try{
+    await apiFetch(`${API}/replacement_requests.php`,{method:'PATCH',body:JSON.stringify({id,status,resolution_notes})});
+    showToast(`Request ${status}.`);
+    loadReplacementRequestsList();
+    if(status==='fulfilled') loadTools(); // stock changed
+  }catch(_){}
 }
 
 function openAddToolModal(){
@@ -503,6 +611,19 @@ async function loadBorrowers(){
   }catch(_){document.getElementById('borrowerTableBody').innerHTML='<tr class="empty-row"><td colspan="7">Failed to load borrowers.</td></tr>';}
 }
 
+// Green = all of this borrower's active items are on schedule; red =
+// at least one is overdue; neutral gray = nothing currently out. This
+// replaces the old logic, which just turned green the instant
+// active_borrows hit 0 — useful for "nothing out" but useless for
+// "are they late," which is the thing staff actually needs to catch.
+function activeBorrowsBadge(b){
+  const n=b.active_borrows||0;
+  const overdue=b.overdue_count||0;
+  if(n===0) return `<span class="status-badge neutral"><span class="status-dot"></span>No active items</span>`;
+  if(overdue>0) return `<span class="status-badge low-stock"><span class="status-dot"></span>${overdue} overdue of ${n}</span>`;
+  return `<span class="status-badge available"><span class="status-dot"></span>${n} item${n!==1?'s':''} · On Time</span>`;
+}
+
 function renderBorrowersTable(borrowers){
   const tbody=document.getElementById('borrowerTableBody');
   if(!borrowers.length){tbody.innerHTML='<tr class="empty-row"><td colspan="9">No borrowers found.</td></tr>';return;}
@@ -511,14 +632,14 @@ function renderBorrowersTable(borrowers){
     <tr${b.is_active==0?' style="opacity:.55"':''}>
       <td data-label="Borrower"><div class="tool-item" style="cursor:pointer" onclick="viewBorrowerHistory(${b.id})" title="View history">
         <div class="user-avatar" style="width:40px;height:40px;font-size:13px">${getInitials(b.full_name)}</div>
-        <div class="tool-info"><h4>${b.full_name}${b.is_active==0?' <span class="status-badge low-stock" style="margin-left:6px"><span class="status-dot"></span>Inactive</span>':''}</h4><span>${b.type}</span></div>
+        <div class="tool-info"><h4>${b.full_name}${b.is_active==0?' <span class="status-badge low-stock" style="margin-left:6px"><span class="status-dot"></span>Inactive</span>':''}${b.flagged_count>0?' <i class="fas fa-flag" title="Has damaged/missing return history" style="color:var(--danger,#dc2626);font-size:11px;margin-left:6px"></i>':''}</h4><span>${b.type}</span></div>
       </div></td>
       <td data-label="ID Number"><code>${b.id_number}</code></td>
       <td data-label="Type">${b.type}</td>
       <td data-label="Course">${b.course||'—'}</td>
       <td data-label="Section">${b.section_name||'—'}</td>
       <td data-label="Contact">${b.email||'—'}</td>
-      <td data-label="Active Borrows"><span class="status-badge ${b.active_borrows>0?'borrowed':'available'}"><span class="status-dot"></span>${b.active_borrows} item${b.active_borrows!==1?'s':''}</span></td>
+      <td data-label="Active Borrows">${activeBorrowsBadge(b)}</td>
       <td data-label="Total Borrows">${b.total_borrows}</td>
       <td data-label="Actions"><div class="action-btns">
         <button class="action-btn view" title="View History" onclick="viewBorrowerHistory(${b.id})"><i class="fas fa-clock-rotate-left"></i></button>
@@ -557,7 +678,7 @@ async function viewBorrowerHistory(id){
       return;
     }
     const flagBadge=(r)=>{
-      if(r.type==='return') return `<span class="status-badge ${r.condition==='damaged'?'low-stock':(r.condition==='minor'?'low-stock':'available')}"><span class="status-dot"></span>${r.condition||'—'}</span>`;
+      if(r.type==='return') return `<span class="status-badge ${(r.condition==='damaged'||r.condition==='missing')?'low-stock':(r.condition==='minor'?'low-stock':'available')}"><span class="status-dot"></span>${r.condition||'—'}</span>`;
       if(r.flag==='late') return '<span class="status-badge low-stock"><span class="status-dot"></span>Returned Late</span>';
       if(r.flag==='overdue') return '<span class="status-badge borrowed"><span class="status-dot"></span>Overdue</span>';
       if(r.flag==='on_time') return '<span class="status-badge available"><span class="status-dot"></span>On Time</span>';
@@ -674,6 +795,7 @@ async function saveBorrower(){
   const sectionId=parseInt(section.value||'0',10);
   const sectionName=section.options[section.selectedIndex]?.dataset?.name||section.options[section.selectedIndex]?.text||'';
   if(!body.full_name||!body.id_number||!body.type){showToast('Please fill in all required fields.','error');return;}
+  if(body.type==='Student' && !/^\d{4}-\d{5}$/.test(body.id_number)){showToast('Student ID must match the school format: YYYY-XXXXX (e.g. 2024-00123).','error');return;}
   if(!course||!sectionId){showToast('Please select a course and section.','error');return;}
   if(id) body.id=parseInt(id,10);
   setLoading('saveBorrowerBtn',true);
@@ -737,7 +859,20 @@ function loadCameras(selectId){
     if(!devices||!devices.length){sel.innerHTML='<option value="">No cameras detected</option>';return devices;}
     devices.forEach((d,i)=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.label||`Camera ${i+1}`;sel.appendChild(o);});
     return devices;
-  }).catch(err=>{document.getElementById(selectId).innerHTML='<option value="">Camera access denied</option>';throw err;});
+  }).catch(err=>{
+    // Surface the REAL reason instead of a generic "denied" — on a
+    // desktop this is very often not a permission denial at all, but
+    // the page being loaded over http:// from something other than
+    // localhost (camera access requires a secure context: https://
+    // or http://localhost, per browser policy — not something this
+    // app's code can override).
+    const msg=String(err && (err.message||err)) || 'Unknown error';
+    const isSecureCtx = window.isSecureContext;
+    const hint = isSecureCtx ? msg : `Camera blocked: this page must be opened via https:// or http://localhost — "${location.hostname}" doesn't qualify for camera access in most browsers.`;
+    document.getElementById(selectId).innerHTML=`<option value="">${isSecureCtx?'Camera error: '+msg:'Not a secure context'}</option>`;
+    console.error('Camera enumeration failed:', hint);
+    throw new Error(hint);
+  });
 }
 
 async function startBorrowScanner(){
@@ -750,7 +885,7 @@ async function startBorrowScanner(){
     // than on page load.
     setScanStatus('borrowScanStatus','borrowScanStatusText','Requesting camera access…','scanning');
     try{ await loadCameras('borrowCameraSelect'); }
-    catch(_){ setScanStatus('borrowScanStatus','borrowScanStatusText','Camera access denied.','error'); return; }
+    catch(err){ setScanStatus('borrowScanStatus','borrowScanStatusText',err.message||'Camera access failed.','error'); return; }
   }
   const camId=sel.value;
   if(!camId){setScanStatus('borrowScanStatus','borrowScanStatusText','No camera available.','error');return;}
@@ -758,7 +893,7 @@ async function startBorrowScanner(){
   document.getElementById('borrowStartBtn').style.display='none';
   document.getElementById('borrowStopBtn').style.display='flex';
   setScanStatus('borrowScanStatus','borrowScanStatusText','Scanning — point camera at QR code…','scanning');
-  borrowQr.start(camId,{fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};},aspectRatio:1},
+  borrowQr.start(camId,{fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};}},
     decoded=>{document.getElementById('borrowToolId').value=decoded;document.getElementById('clearBorrowToolBtn').classList.add('visible');matchBorrowToolCode(decoded);setScanStatus('borrowScanStatus','borrowScanStatusText','✓ Scanned: '+decoded,'success');stopBorrowScanner();},()=>{}
   ).then(()=>borrowScanning=true).catch(err=>{setScanStatus('borrowScanStatus','borrowScanStatusText','Cannot start: '+err,'error');resetBorrowScannerUI();});
 }
@@ -797,13 +932,13 @@ function startReturnScanner(){
     document.getElementById('returnStartBtn').style.display='none';
     document.getElementById('returnStopBtn').style.display='flex';
     setScanStatus('returnScanStatus','returnScanStatusText','Scanning…','scanning');
-    returnQr.start(camId,{fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};},aspectRatio:1},
+    returnQr.start(camId,{fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};}},
       decoded=>{document.getElementById('returnToolId').value=decoded;document.getElementById('clearReturnToolBtn').classList.add('visible');matchReturnToolCode(decoded);setScanStatus('returnScanStatus','returnScanStatusText','✓ Scanned: '+decoded,'success');stopReturnScanner();},()=>{}
     ).then(()=>returnScanning=true).catch(err=>{setScanStatus('returnScanStatus','returnScanStatusText','Cannot start: '+err,'error');resetReturnScannerUI();});
   };
   if(!sel.value){
     setScanStatus('returnScanStatus','returnScanStatusText','Requesting camera access…','scanning');
-    loadCameras('returnCameraSelect').then(()=>go(sel.value)).catch(()=>setScanStatus('returnScanStatus','returnScanStatusText','Camera access denied.','error'));
+    loadCameras('returnCameraSelect').then(()=>go(sel.value)).catch(err=>setScanStatus('returnScanStatus','returnScanStatusText',err.message||'Camera access failed.','error'));
     return;
   }
   go(sel.value);
@@ -992,8 +1127,9 @@ async function handleBorrow(){
   const borrowerIdNumber=document.getElementById('borrowerIdNumberInput').value.trim();
   const due=document.getElementById('borrowDueDate').value;
   const notes=document.getElementById('borrowNotes').value.trim();
-  const qty=parseInt(document.getElementById('borrowQty').value)||1;
+  const qty=parseInt(document.getElementById('borrowQty').value);
   if(!toolCode){showToast('Please scan a QR code or enter a Tool Code.','error');return;}
+  if(!qty||qty<1){showToast('Quantity must be at least 1.','error');return;}
   if(!borrowerId && !borrowerName){showToast('Please select a borrower or enter a borrower name.','error');return;}
   if(!borrowerId && borrowerName && !borrowerIdNumber){showToast('Please enter an ID Number for the new borrower.','error');return;}
   if(!due){showToast('Please select a due date.','error');return;}
@@ -1006,6 +1142,7 @@ async function handleBorrow(){
     // New borrower typed in → create the record first, then use its id
     if(!finalBorrowerId){
     const borrowerType=document.getElementById('borrowerTypeInput').value || 'Guest';
+    if(borrowerType==='Student' && !/^\d{4}-\d{5}$/.test(borrowerIdNumber)){showToast('Student ID must match the school format: YYYY-XXXXX (e.g. 2024-00123).','error');setLoading('borrowSubmitBtn',false);return;}
     const newBorrower=await apiFetch(`${API}/borrowers.php`,{method:'POST',body:JSON.stringify({
     full_name:borrowerName,
     id_number:borrowerIdNumber,
@@ -1037,15 +1174,24 @@ async function handleReturn(){
   const toolCode=document.getElementById('returnToolId').value.trim();
   const condition=document.getElementById('returnCondition').value;
   const notes=document.getElementById('returnNotes').value.trim();
-  const qty=parseInt(document.getElementById('returnQty').value)||1;
+  const returneeName=document.getElementById('returneeName').value.trim();
+  const qty=parseInt(document.getElementById('returnQty').value);
   if(!borrowTxnId){showToast('Select the borrowed item you\'re returning from the list — it must match an active borrow.','error');return;}
+  if(!qty||qty<1){showToast('Quantity must be at least 1.','error');return;}
+  if(!returneeName){showToast('Returnee Name is required — who is handing the tool back?','error');return;}
   setLoading('returnSubmitBtn',true);
   try{
-    const res=await apiFetch(`${API}/transactions.php`,{method:'POST',body:JSON.stringify({type:'return',borrow_txn_id:borrowTxnId,tool_code:toolCode,condition,notes,qty})});
+    const res=await apiFetch(`${API}/transactions.php`,{method:'POST',body:JSON.stringify({type:'return',borrow_txn_id:borrowTxnId,tool_code:toolCode,condition,notes,returnee_name:returneeName,qty})});
     const d=res.data;
-    const condLabels={good:'Good condition',minor:'Minor wear',damaged:'Damaged'};
+    const condLabels={good:'Good condition',minor:'Minor wear',damaged:'Damaged',missing:'Missing / Lost'};
     showToast(`Return recorded — ${d.txn_id}`,'success');
-    addActivityItem('returnActivityFeed','return',`<strong>${d.tool_name||toolCode}</strong> returned — ${condLabels[condition]||condition}`,`${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} • Notes: ${notes||'—'}`);
+    if(d.is_late){
+      showToast(`⚠ This item was returned late (was due ${d.due_date}).`,'error');
+    }
+    if(d.removed_from_stock){
+      showToast(`"${d.tool_name}" marked ${condLabels[condition].toLowerCase()} — removed from available stock.`,'error');
+    }
+    addActivityItem('returnActivityFeed','return',`<strong>${d.tool_name||toolCode}</strong> returned by ${returneeName} — ${condLabels[condition]||condition}`,`${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} • Notes: ${notes||'—'}`);
     loadReturnHistory();
     loadBorrowHistory(); // refresh borrow history status
     clearReturnToolId();
@@ -1054,6 +1200,34 @@ async function handleReturn(){
     document.getElementById('returnNotes').value='';
     loadActiveBorrowsForReturn(); // this item is (partially or fully) returned now — refresh the list
   }catch(_){}finally{setLoading('returnSubmitBtn',false);}
+}
+
+// Pre-populates the Borrow/Return "Activity" feed from real recent
+// history when the page opens — previously this feed started empty
+// every single session and only ever grew from actions taken THIS
+// browser session, so anyone who hadn't personally just performed a
+// borrow/return (e.g. a freshly-logged-in Staff account) would see
+// "no activity yet" regardless of how busy the system actually was.
+async function loadRecentActivity(feedId, type){
+  const feed=document.getElementById(feedId);
+  try{
+    const res=await apiFetch(`${API}/transactions.php?type=${type}&per_page=5`);
+    const rows=res.data||[];
+    if(!rows.length) return; // leave the existing "No X yet" empty-state as-is
+    feed.innerHTML='';
+    // API returns newest-first; each addActivityItem() call prepends,
+    // so iterate oldest-of-these-5 → newest, and the newest ends up on
+    // top like it should.
+    rows.slice().reverse().forEach(t=>{
+      const when=new Date(t.created_at).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      if(type==='borrow'){
+        addActivityItem(feedId,'borrow',`<strong>${t.tool_name||t.tool_code}</strong> borrowed by ${t.borrower||'—'}`,`${when} • Due: ${t.due_date||'—'}`);
+      }else{
+        const condLabels={good:'Good condition',minor:'Minor wear',damaged:'Damaged',missing:'Missing / Lost'};
+        addActivityItem(feedId,'return',`<strong>${t.tool_name||t.tool_code}</strong> returned by ${t.returnee_name||'—'} — ${condLabels[t.condition]||t.condition||''}`,`${when} • Notes: ${t.notes||'—'}`);
+      }
+    });
+  }catch(_){}
 }
 
 function addActivityItem(feedId, type, title, sub){
@@ -1104,13 +1278,13 @@ async function loadReturnHistory(){
     const tbody=document.getElementById('returnHistoryBody');
     const rows=res.data||[];
     if(!rows.length){tbody.innerHTML='<tr class="empty-row"><td colspan="6">No return transactions yet.</td></tr>';return;}
-    const condBadge={good:'available',minor:'returned',damaged:'low-stock'};
-    const condLabel={good:'Good',minor:'Minor Wear',damaged:'Damaged'};
+    const condBadge={good:'available',minor:'returned',damaged:'low-stock',missing:'low-stock'};
+    const condLabel={good:'Good',minor:'Minor Wear',damaged:'Damaged',missing:'Missing/Lost'};
     tbody.innerHTML=rows.map(t=>`
       <tr>
         <td data-label="Txn ID"><code>${t.txn_id}</code></td>
         <td data-label="Tool Code">${t.tool_code}</td>
-        <td data-label="Returned By">${t.returned_by||t.borrower||'—'}</td>
+        <td data-label="Returned By">${t.returnee_name||'—'}</td>
         <td data-label="Date & Time">${new Date(t.created_at).toLocaleString()}</td>
         <td data-label="Condition"><span class="status-badge ${condBadge[t.condition]||'returned'}"><span class="status-dot"></span>${condLabel[t.condition]||t.condition}</span></td>
         <td data-label="Notes">${t.notes||'—'}</td>
@@ -1137,7 +1311,7 @@ async function loadReports(){
     monthlyChart=new Chart(document.getElementById('monthlyChart').getContext('2d'),{
       type:'bar',
       data:{labels:md.labels||[],datasets:[{label:'Borrows',data:md.borrows||[],backgroundColor:CHART_COLORS.purple,borderRadius:8},{label:'Returns',data:md.returns||[],backgroundColor:CHART_COLORS.green,borderRadius:8}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:20}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false}}}}
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:20}}},scales:{y:{beginAtZero:true,ticks:{precision:0},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false}}}}
     });
 
     if(categoryChart)categoryChart.destroy();
@@ -1232,9 +1406,34 @@ function renderUsersTable(users){
       <td data-label="Role"><span class="status-badge ${u.role==='Admin'?'low-stock':'available'}"><span class="status-dot"></span>${u.role}</span></td>
       <td data-label="Created">${new Date(u.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</td>
       <td data-label="Actions"><div class="action-btns">
+        <button class="action-btn" title="Reset Password" onclick="openResetPasswordModal(${u.id},'${u.name.replace(/'/g,"\\'")}')"><i class="fas fa-key"></i></button>
         <button class="action-btn delete" title="Delete" onclick="deleteUser(${u.id},'${u.name.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
       </div></td>
     </tr>`).join('');
+}
+
+let resetPasswordUserId=null;
+function openResetPasswordModal(id,name){
+  resetPasswordUserId=id;
+  document.getElementById('rp_name').textContent=name;
+  document.getElementById('rp_new').value='';
+  document.getElementById('rp_confirm').value='';
+  openModal('resetPasswordModal');
+}
+
+async function saveResetPassword(){
+  const next=document.getElementById('rp_new').value;
+  const confirmVal=document.getElementById('rp_confirm').value;
+  if(!next||!confirmVal){showToast('Both fields are required.','error');return;}
+  if(next.length<8){showToast('Password must be at least 8 characters.','error');return;}
+  if(next!==confirmVal){showToast('Passwords don\'t match.','error');return;}
+  setLoading('saveResetPasswordBtn',true);
+  try{
+    await apiFetch(`${API}/users.php`,{method:'PATCH',body:JSON.stringify({id:resetPasswordUserId,new_password:next})});
+    showToast('Password reset.');
+    closeModal('resetPasswordModal');
+  }catch(_){}
+  setLoading('saveResetPasswordBtn',false);
 }
 
 function openAddUserModal(){

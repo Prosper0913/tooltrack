@@ -4,6 +4,8 @@
 //
 //  GET    → list users (id, name, username, role, created_at — never password)
 //  POST   { name, username, password, role }
+//  PATCH  { id, new_password }  → Admin resets ANOTHER user's password
+//                                  (the "forgot password" recovery path)
 //  DELETE ?id=N   (cannot delete yourself, cannot delete the last Admin)
 // ================================================================
 require_once __DIR__ . '/config.php';
@@ -52,6 +54,31 @@ if ($method === 'POST') {
     $stmt = $db->prepare('SELECT id, name, username, role, created_at FROM users WHERE id = ?');
     $stmt->execute([$id]);
     ok($stmt->fetch(), 201);
+}
+
+// ── PATCH (Admin resets another user's password) ────────────────
+// This is the "someone forgot their password" recovery path for
+// every account EXCEPT the one currently logged in — an Admin can
+// reset a Staff account (or another Admin account) without knowing
+// their old password. If the sole Admin is the one locked out, see
+// reset_admin_password.php (CLI-only) instead.
+if ($method === 'PATCH') {
+    $b = body();
+    $id  = (int)($b['id'] ?? 0);
+    $new = trim($b['new_password'] ?? '');
+
+    if (!$id || !$new) fail('id and new_password are required.');
+    if (strlen($new) < 8) fail('New password must be at least 8 characters.');
+
+    $stmt = $db->prepare('SELECT id, name FROM users WHERE id = ?');
+    $stmt->execute([$id]);
+    $target = $stmt->fetch();
+    if (!$target) fail('User not found.', 404);
+
+    $hash = password_hash($new, PASSWORD_DEFAULT);
+    $db->prepare('UPDATE users SET password = ? WHERE id = ?')->execute([$hash, $id]);
+
+    ok(['message' => "Password reset for {$target['name']}."]);
 }
 
 // ── DELETE ────────────────────────────────────────────────────

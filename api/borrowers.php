@@ -4,9 +4,9 @@
 //
 //  GET    ?page=1&per_page=10&type=&search=
 //         ?id=N  → single borrower
-//  POST   { full_name, id_number, type, email, phone }
-//  PUT    { id, full_name, id_number, type, email, phone }
-//  PATCH  { id, is_active }  → activate/deactivate (no hard delete)
+//  POST   { full_name, id_number, type, email, phone }  — any logged-in user
+//  PUT    { id, full_name, id_number, type, email, phone }  — Admin only
+//  PATCH  { id, is_active }  → activate/deactivate (no hard delete) — Admin only
 // ================================================================
 require_once __DIR__ . '/config.php';
 
@@ -14,11 +14,25 @@ $db     = getDB();
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Any logged-in user (Admin or Staff) can look borrowers up — Staff
-// need this to select a borrower on the Borrow page. Creating,
-// editing, or deleting borrower records is Admin-only.
+// need this to select a borrower on the Borrow page, and creating a
+// brand-new borrower record is also part of that same Staff workflow
+// (registering a walk-in guest mid-transaction) — so POST is open to
+// any logged-in user. Editing an existing person's details or
+// activating/deactivating them is roster *management*, which stays
+// Admin-only.
 requireLogin();
-if (in_array($method, ['POST', 'PUT', 'PATCH'], true)) {
+if (in_array($method, ['PUT', 'PATCH'], true)) {
     requireRole(ROLE_ADMIN);
+}
+
+// School's official student ID format, e.g. 2024-00123. Only enforced
+// for type=Student — Faculty/Staff use the school's HR numbering (not
+// specified here) and Guest is by definition someone outside that
+// system, so neither is forced through the student ID shape.
+function validateIdNumber(string $type, string $idNumber): void {
+    if ($type === 'Student' && !preg_match('/^\d{4}-\d{5}$/', $idNumber)) {
+        fail("Student ID must match the school's format: YYYY-XXXXX (e.g. 2024-00123). Got '$idNumber'.");
+    }
 }
 
 // ── GET ───────────────────────────────────────────────────────
@@ -75,7 +89,7 @@ if ($method === 'GET') {
                     $r['flag'] = 'overdue';
                     $stats['overdue_now']++;
                 }
-            } elseif ($r['type'] === 'return' && in_array($r['condition'], ['minor', 'damaged'], true)) {
+            } elseif ($r['type'] === 'return' && in_array($r['condition'], ['minor', 'damaged', 'missing'], true)) {
                 $stats['damaged_or_minor']++;
             }
         }
@@ -131,7 +145,13 @@ if ($method === 'GET') {
         $w
     ), $where));
 
-    $sql = 'SELECT b.*, e.course, e.section_name, e.cms_section_id
+    $sql = 'SELECT b.*, e.course, e.section_name, e.cms_section_id,
+              (SELECT COUNT(*) FROM transactions t
+                 WHERE t.borrower_id = b.id AND t.type = "borrow"
+                   AND t.status = "active" AND t.due_date < CURDATE()) AS overdue_count,
+              (SELECT COUNT(*) FROM transactions t2
+                 WHERE t2.borrower_id = b.id AND t2.type = "return"
+                   AND t2.`condition` IN ("damaged","missing")) AS flagged_count
             FROM borrowers b
             LEFT JOIN borrower_enrollments e
               ON e.id = (
@@ -175,6 +195,7 @@ if ($method === 'POST') {
     if (!in_array($type, ['Student', 'Faculty', 'Staff', 'Guest'])) {
     fail("Invalid type. Must be Student, Faculty, Guest or Staff.");
 }
+    validateIdNumber($type, $id_number);
 
     // Duplicate ID check
     $check = $db->prepare('SELECT id FROM borrowers WHERE id_number = ?');
@@ -212,6 +233,7 @@ if ($method === 'PUT') {
     if (!in_array($type, ['Student', 'Faculty', 'Staff', 'Guest'])) {
         fail("Invalid type. Must be Student, Faculty, Guest or Staff.");
     }
+    validateIdNumber($type, $id_number);
 
     // Check exists
     $existing = $db->prepare('SELECT id FROM borrowers WHERE id = ?');

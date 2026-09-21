@@ -342,7 +342,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
           <div class="card-body"><div class="chart-container"><canvas id="borrowChart"></canvas></div></div>
         </div>
         <div class="card">
-          <div class="card-header"><h3 class="card-title">Most Borrowed Tools</h3></div>
+          <div class="card-header"><h3 class="card-title">Top Borrowed Tools <span style="font-weight:400;color:var(--gray-400);font-size:12px">(Top 5)</span></h3></div>
           <div class="card-body"><div class="borrowed-list" id="dashMostBorrowed"><div class="empty-state"><i class="fa-solid fa-utensils"></i><p>Loading…</p></div></div></div>
         </div>
       </div>
@@ -366,6 +366,8 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
           <h3 class="card-title">Tools Inventory</h3>
           <div class="card-actions">
             <button class="card-btn secondary" onclick="exportToolsCSV()"><i class="fas fa-download"></i> Export CSV</button>
+            <button class="card-btn secondary" onclick="openReplacementRequestsModal()"><i class="fas fa-list-check"></i> Replacement Requests</button>
+            <button class="card-btn secondary" onclick="openReplacementRequestModal()"><i class="fas fa-triangle-exclamation"></i> Submit Replacement Request</button>
             <button class="card-btn primary" onclick="openAddToolModal()"><i class="fas fa-plus"></i> Add New Tool</button>
           </div>
         </div>
@@ -374,8 +376,8 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
             <select class="filter-select" id="toolStatusFilter">
               <option value="">All Status</option>
               <option value="available">Available</option>
-              <option value="borrowed">Borrowed</option>
               <option value="low-stock">Low Stock</option>
+              <option value="out-of-stock">Out of Stock</option>
             </select>
           </div>
           <div class="filter-group"><span class="filter-label">Category:</span>
@@ -493,7 +495,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
             <input type="text" class="form-input-full" id="borrowerNameInput" placeholder="Enter borrower's full name" oninput="onBorrowerNameInput()">
 
             <label class="field-label">ID Number</label>
-          <input type="text" class="form-input-full" id="borrowerIdNumberInput" placeholder="e.g., 20222637" oninput="onBorrowerNameInput()">
+          <input type="text" class="form-input-full" id="borrowerIdNumberInput" placeholder="Students: e.g., 2024-00123" oninput="onBorrowerNameInput()">
 
           <label class="field-label">Type (optional)</label>
           <select class="form-input-full" id="borrowerTypeInput">
@@ -572,12 +574,13 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
 
             <input type="number" class="form-input-full" id="returnQty" min="1" value="1">
             <label class="field-label">Returnee Name *</label>
-            <input type="text" class="form-input-full" id="returneeName" placeholder="Enter name of person returning the tool">
+            <input type="text" class="form-input-full" id="returneeName" placeholder="Enter name of person returning the tool" required>
             <label class="field-label">Condition</label>
             <select class="form-input-full" id="returnCondition">
               <option value="good">Good — No Issues</option>
               <option value="minor">Minor Wear</option>
               <option value="damaged">Damaged — Needs Repair</option>
+              <option value="missing">Missing / Lost</option>
             </select>
 
             <label class="field-label">Return Notes (Optional)</label>
@@ -784,6 +787,67 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
+     MODAL: Submit Replacement Request
+═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="replacementRequestModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Submit Replacement Request</h3>
+      <button class="modal-close" onclick="closeModal('replacementRequestModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px">For a tool that's damaged, lost, or worn out and needs replacing — not for adding brand-new inventory.</p>
+      <div class="form-group"><label class="field-label">Tool</label>
+        <select id="rr_tool" class="form-input-full" onchange="onReplacementToolChange()">
+          <option value="">Select an existing tool…</option>
+        </select>
+      </div>
+      <div class="form-group" id="rr_customNameGroup" style="display:none">
+        <label class="field-label">Tool Name *</label>
+        <input type="text" id="rr_customName" class="form-input-full" placeholder="Name it if it's no longer in the system">
+      </div>
+      <div class="form-group"><label class="field-label">Reason *</label>
+        <select id="rr_reason" class="form-input-full">
+          <option value="damaged">Damaged</option>
+          <option value="lost">Lost</option>
+          <option value="worn_out">Worn Out</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="field-label">Quantity Needed *</label><input type="number" id="rr_qty" class="form-input-full" min="1" value="1"></div>
+      <div class="form-group"><label class="field-label">Notes</label><input type="text" id="rr_notes" class="form-input-full" placeholder="Any details for the Admin (optional)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeModal('replacementRequestModal')">Cancel</button>
+      <button class="btn btn-blue" id="saveReplacementRequestBtn" onclick="saveReplacementRequest()">Submit Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL: Replacement Requests (list)
+═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="replacementRequestsListModal">
+  <div class="modal" style="max-width:820px;width:92vw">
+    <div class="modal-header">
+      <h3 class="modal-title">Replacement Requests</h3>
+      <button class="modal-close" onclick="closeModal('replacementRequestsListModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="table-container" style="max-height:55vh;overflow:auto">
+        <table class="data-table">
+          <thead><tr><th>Tool</th><th>Reason</th><th>Qty</th><th>Requested By</th><th>Notes</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="rrListBody"><tr class="empty-row"><td colspan="7"><span class="spinner dark"></span> Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeModal('replacementRequestsListModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
      MODAL: Add / Edit Borrower
 ═══════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="borrowerModal">
@@ -798,7 +862,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
       <div class="form-group"><label class="field-label">Full Name *</label><input type="text" id="b_name" class="form-input-full" placeholder="Enter full name"></div>
       <div class="form-group"><label class="field-label">Course *</label><select id="b_course" class="form-input-full"><option value="">Select course</option></select></div>
       <div class="form-group"><label class="field-label">Section *</label><select id="b_section" class="form-input-full"><option value="">Select section</option></select></div>
-      <div class="form-group"><label class="field-label">ID Number *</label><input type="text" id="b_idnum" class="form-input-full" placeholder="e.g., 2024-0001"></div>
+      <div class="form-group"><label class="field-label">ID Number *</label><input type="text" id="b_idnum" class="form-input-full" placeholder="Students: e.g., 2024-00123"><p style="font-size:11px;color:var(--gray-500);margin-top:4px">Students must use the school's format: YYYY-XXXXX</p></div>
       <div class="form-group"><label class="field-label">Type *</label>
         <select id="b_type" class="form-input-full">
           <option value="">Select type</option>
@@ -950,6 +1014,27 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
     <div class="modal-footer">
       <button class="btn btn-gray" onclick="closeModal('userModal')">Cancel</button>
       <button class="btn btn-blue" id="saveUserBtn" onclick="saveUser()">Add User</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL: Reset User Password (Admin resets someone else's)
+═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="resetPasswordModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <h3 class="modal-title">Reset Password</h3>
+      <button class="modal-close" onclick="closeModal('resetPasswordModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px">Setting a new password for <strong id="rp_name"></strong>. They'll need to use this new password next time they log in.</p>
+      <div class="form-group"><label class="field-label">New Password *</label><input type="password" id="rp_new" class="form-input-full" placeholder="At least 8 characters" autocomplete="new-password"></div>
+      <div class="form-group"><label class="field-label">Confirm New Password *</label><input type="password" id="rp_confirm" class="form-input-full" autocomplete="new-password"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeModal('resetPasswordModal')">Cancel</button>
+      <button class="btn btn-blue" id="saveResetPasswordBtn" onclick="saveResetPassword()">Reset Password</button>
     </div>
   </div>
 </div>

@@ -139,6 +139,8 @@ body{font-family:'Inter',sans-serif;background:var(--gray-50);color:var(--gray-8
 .status-badge.available{background:var(--success-bg);color:#065f46;}
 .status-badge.borrowed{background:var(--warning-bg);color:#92400e;}
 .status-badge.low-stock{background:var(--danger-bg);color:#991b1b;}
+.status-badge.out-of-stock{background:#1f2937;color:#fff;}
+.status-badge.neutral{background:var(--gray-100,#f1f5f9);color:var(--gray-600,#475569);}
 .status-badge.returned{background:var(--primary-bg);color:var(--primary-dark);}
 .status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
 

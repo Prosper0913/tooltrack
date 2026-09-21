@@ -24,9 +24,20 @@ if ($type === 'monthly') {
     $labels  = [];
     $borrows = [];
     $returns = [];
+
+    // NOTE: bare strtotime("monday")/strtotime("sunday") has a classic
+    // PHP gotcha — if today itself IS Monday (or Sunday), PHP jumps
+    // forward to NEXT week's Monday/Sunday instead of today, which
+    // silently shifted this week's whole bucket by 7 days whenever
+    // the report happened to be viewed on one of those two days.
+    // Anchoring off date('N') (ISO weekday, 1=Mon..7=Sun) sidesteps
+    // that ambiguity entirely.
+    $todayN     = (int)date('N');
+    $thisMonday = date('Y-m-d', strtotime('-' . ($todayN - 1) . ' days'));
+
     for ($i = 3; $i >= 0; $i--) {
-        $start = date('Y-m-d', strtotime("monday -$i week"));
-        $end   = date('Y-m-d', strtotime("sunday -$i week"));
+        $start = date('Y-m-d', strtotime("$thisMonday -$i week"));
+        $end   = date('Y-m-d', strtotime("$start +6 days"));
         $label = 'Wk ' . date('W', strtotime($start));
         $labels[] = $label;
 

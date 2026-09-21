@@ -10,9 +10,13 @@ $method = $_SERVER['REQUEST_METHOD'];
 requireLogin();
 
 // ── Compute status from columns ───────────────────────────────
+// IMPORTANT: order matters here — available===0 must be checked
+// BEFORE the low-stock check, since 0 is always <= min_stock, which
+// meant the old ordering could never actually reach "out of stock"
+// (it always got caught by the low-stock branch first).
 function toolStatus(array $t): string {
+    if ((int)$t['available'] === 0) return 'out-of-stock';
     if ($t['available'] <= $t['min_stock']) return 'low-stock';
-    if (($t['quantity'] - $t['available']) > 0 && $t['available'] === 0) return 'borrowed';
     return 'available';
 }
 
