@@ -212,6 +212,8 @@ if ($method === 'POST') {
     $stmt = $db->prepare('SELECT * FROM borrowers WHERE id = ?');
     $stmt->execute([$id]);
 
+    logAudit('borrower_create', "Added borrower $full_name ($id_number, $type)");
+
     ok($stmt->fetch(), 201);
 }
 
@@ -254,6 +256,7 @@ if ($method === 'PUT') {
 
     $stmt = $db->prepare('SELECT * FROM borrowers WHERE id = ?');
     $stmt->execute([$id]);
+    logAudit('borrower_edit', "Edited borrower $full_name ($id_number)");
     ok($stmt->fetch());
 }
 
@@ -269,15 +272,17 @@ if ($method === 'PATCH') {
     }
     $isActive = $b['is_active'] ? 1 : 0;
 
-    $existing = $db->prepare('SELECT id FROM borrowers WHERE id = ?');
+    $existing = $db->prepare('SELECT id, full_name FROM borrowers WHERE id = ?');
     $existing->execute([$id]);
-    if (!$existing->fetch()) fail('Borrower not found.', 404);
+    $existingRow = $existing->fetch();
+    if (!$existingRow) fail('Borrower not found.', 404);
 
     $stmt = $db->prepare('UPDATE borrowers SET is_active = ? WHERE id = ?');
     $stmt->execute([$isActive, $id]);
 
     $stmt = $db->prepare('SELECT * FROM borrowers WHERE id = ?');
     $stmt->execute([$id]);
+    logAudit($isActive ? 'borrower_reactivate' : 'borrower_deactivate', ($isActive ? 'Reactivated' : 'Deactivated') . " borrower {$existingRow['full_name']}");
     ok($stmt->fetch());
 }
 

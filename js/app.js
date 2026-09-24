@@ -63,7 +63,7 @@ function renderPagination(infoId, btnsId, current, total, perPage, totalRecords,
   c.innerHTML=html;
 }
 
-const PAGE_TITLES={dashboard:'Dashboard',tools:'Tools Management',borrowers:'Borrowers Directory',borrow:'Borrow Tool',return:'Return Tool',reports:'Reports & Analytics','sync-section':'Sync a Section',users:'User Accounts'};
+const PAGE_TITLES={dashboard:'Dashboard',tools:'Tools Management',borrowers:'Borrowers Directory',borrow:'Borrow Tool',return:'Return Tool',reports:'Reports & Analytics','sync-section':'Sync a Section',users:'User Accounts',audit:'Audit Trail'};
 
 document.querySelectorAll('.nav-item[data-page]').forEach(item=>{
   item.addEventListener('click',()=>navigateTo(item.getAttribute('data-page')));
@@ -100,6 +100,7 @@ function navigateTo(page){
   if(page==='return')    { loadReturnHistory(); loadActiveBorrowsForReturn(); loadRecentActivity('returnActivityFeed','return'); }
   if(page==='reports')   loadReports();
   if(page==='users')     loadUsers();
+  if(page==='audit')     { auditCurrentPage=1; loadAuditLog(); }
 }
 
 function openModal(id){document.getElementById(id).classList.add('active');}
@@ -1472,6 +1473,107 @@ function deleteUser(id,name){
     }catch(_){}
   };
   openModal('confirmDeleteModal');
+}
+
+/* ───────────────────────────────────────────────────────────
+   AUDIT TRAIL (Admin only)
+   GET api/audit_log.php?page=&per_page=&action=&search=&date_from=&date_to=
+─────────────────────────────────────────────────────────── */
+let auditCurrentPage=1;
+const AUDIT_PER_PAGE=25;
+let auditActionsLoaded=false;
+
+const AUDIT_ACTION_LABEL={
+  login:'Login', login_failed:'Login Failed', logout:'Logout',
+  borrow:'Borrow', return:'Return',
+  tool_create:'Tool Created', tool_edit:'Tool Edited', tool_retire:'Tool Retired', tool_reactivate:'Tool Reactivated',
+  borrower_create:'Borrower Added', borrower_edit:'Borrower Edited',
+  borrower_deactivate:'Borrower Deactivated', borrower_reactivate:'Borrower Reactivated',
+  user_create:'User Created', user_delete:'User Deleted',
+  password_reset:'Password Reset', password_change:'Password Changed',
+  replacement_request:'Replacement Requested', replacement_resolved:'Replacement Resolved',
+  cms_sync:'CMS Sync',
+};
+const AUDIT_ACTION_BADGE={
+  login:'available', login_failed:'low-stock', logout:'neutral',
+  borrow:'borrowed', return:'available',
+  tool_create:'available', tool_edit:'neutral', tool_retire:'low-stock', tool_reactivate:'available',
+  borrower_create:'available', borrower_edit:'neutral',
+  borrower_deactivate:'low-stock', borrower_reactivate:'available',
+  user_create:'available', user_delete:'low-stock',
+  password_reset:'low-stock', password_change:'neutral',
+  replacement_request:'borrowed', replacement_resolved:'available',
+  cms_sync:'neutral',
+};
+
+async function loadAuditActionOptions(){
+  if(auditActionsLoaded) return;
+  try{
+    const res=await apiFetch(`${API}/audit_log.php?actions=1`);
+    const sel=document.getElementById('auditActionFilter');
+    (res.data||[]).forEach(a=>{
+      const o=document.createElement('option');
+      o.value=a; o.textContent=AUDIT_ACTION_LABEL[a]||a;
+      sel.appendChild(o);
+    });
+    auditActionsLoaded=true;
+  }catch(_){}
+}
+
+async function loadAuditLog(){
+  loadAuditActionOptions();
+  const action=document.getElementById('auditActionFilter').value;
+  const search=document.getElementById('auditSearchFilter').value;
+  const date_from=document.getElementById('auditDateFrom').value;
+  const date_to=document.getElementById('auditDateTo').value;
+  const params=new URLSearchParams({page:auditCurrentPage,per_page:AUDIT_PER_PAGE,action,search,date_from,date_to});
+  document.getElementById('auditTableBody').innerHTML='<tr class="empty-row"><td colspan="7"><span class="spinner dark"></span> Loading…</td></tr>';
+  try{
+    const res=await apiFetch(`${API}/audit_log.php?${params}`);
+    renderAuditLogTable(res.data||[]);
+    const totalPages=Math.ceil((res.total||0)/AUDIT_PER_PAGE);
+    renderPagination('auditPaginationInfo','auditPaginationBtns',auditCurrentPage,totalPages,AUDIT_PER_PAGE,res.total||0,p=>{auditCurrentPage=p;loadAuditLog();});
+  }catch(_){document.getElementById('auditTableBody').innerHTML='<tr class="empty-row"><td colspan="7">Failed to load audit trail.</td></tr>';}
+}
+
+function renderAuditLogTable(rows){
+  const tbody=document.getElementById('auditTableBody');
+  if(!rows.length){tbody.innerHTML='<tr class="empty-row"><td colspan="7">No matching activity.</td></tr>';return;}
+  tbody.innerHTML=rows.map(r=>`
+    <tr>
+      <td data-label="Timestamp">${new Date(r.created_at).toLocaleString([],{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
+      <td data-label="User">${r.username_snapshot||'—'}</td>
+      <td data-label="Role">${r.role_snapshot?`<span class="status-badge ${r.role_snapshot==='Admin'?'low-stock':'available'}"><span class="status-dot"></span>${r.role_snapshot}</span>`:'—'}</td>
+      <td data-label="Action"><span class="status-badge ${AUDIT_ACTION_BADGE[r.action]||'neutral'}"><span class="status-dot"></span>${AUDIT_ACTION_LABEL[r.action]||r.action}</span></td>
+      <td data-label="Details">${r.description}</td>
+      <td data-label="IP Address"><code>${r.ip_address||'—'}</code></td>
+      <td data-label="Device">${r.device||'—'}</td>
+    </tr>`).join('');
+}
+
+function applyAuditFilters(){auditCurrentPage=1;loadAuditLog();}
+function clearAuditFilters(){
+  document.getElementById('auditActionFilter').value='';
+  document.getElementById('auditSearchFilter').value='';
+  document.getElementById('auditDateFrom').value='';
+  document.getElementById('auditDateTo').value='';
+  auditCurrentPage=1;
+  loadAuditLog();
+}
+
+async function exportAuditLogCSV(){
+  try{
+    const action=document.getElementById('auditActionFilter').value;
+    const search=document.getElementById('auditSearchFilter').value;
+    const date_from=document.getElementById('auditDateFrom').value;
+    const date_to=document.getElementById('auditDateTo').value;
+    const params=new URLSearchParams({page:1,per_page:9999,action,search,date_from,date_to});
+    const res=await apiFetch(`${API}/audit_log.php?${params}`);
+    const rows=[['Timestamp','User','Role','Action','Details','IP Address','Device']];
+    (res.data||[]).forEach(r=>rows.push([r.created_at,r.username_snapshot||'',r.role_snapshot||'',AUDIT_ACTION_LABEL[r.action]||r.action,r.description,r.ip_address||'',r.device||'']));
+    downloadCSV(rows,'audit_trail.csv');
+    showToast('Audit trail exported.','success');
+  }catch(_){}
 }
 
 /* ───────────────────────────────────────────────────────────

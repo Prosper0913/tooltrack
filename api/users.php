@@ -53,6 +53,7 @@ if ($method === 'POST') {
     $id   = (int)$db->lastInsertId();
     $stmt = $db->prepare('SELECT id, name, username, role, created_at FROM users WHERE id = ?');
     $stmt->execute([$id]);
+    logAudit('user_create', "Created $role account for $name (username: $username)");
     ok($stmt->fetch(), 201);
 }
 
@@ -77,6 +78,7 @@ if ($method === 'PATCH') {
 
     $hash = password_hash($new, PASSWORD_DEFAULT);
     $db->prepare('UPDATE users SET password = ? WHERE id = ?')->execute([$hash, $id]);
+    logAudit('password_reset', "Reset password for {$target['name']} (admin-initiated)");
 
     ok(['message' => "Password reset for {$target['name']}."]);
 }
@@ -90,7 +92,7 @@ if ($method === 'DELETE') {
         fail('You cannot delete your own account while logged in as it.');
     }
 
-    $stmt = $db->prepare('SELECT role FROM users WHERE id = ?');
+    $stmt = $db->prepare('SELECT name, role FROM users WHERE id = ?');
     $stmt->execute([$id]);
     $target = $stmt->fetch();
     if (!$target) fail('User not found.', 404);
@@ -102,6 +104,7 @@ if ($method === 'DELETE') {
 
     $stmt = $db->prepare('DELETE FROM users WHERE id = ?');
     $stmt->execute([$id]);
+    logAudit('user_delete', "Deleted user account: {$target['name']} ({$target['role']})");
     ok(['deleted_id' => $id]);
 }
 

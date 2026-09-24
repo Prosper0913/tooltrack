@@ -87,6 +87,57 @@ function generateTxnId(): string {
     return 'TXN-' . date('Y') . '-' . strtoupper(substr(uniqid(), -6));
 }
 
+// ── Audit trail ──────────────────────────────────────────────
+// Call this right after any action worth being able to answer "who
+// did this, from where, and when" about later. Never throws — a
+// logging failure should never break the actual action it's
+// recording, so any DB error here is swallowed.
+//
+// $userId/$username/$role default to whoever's logged in (the usual
+// case). Pass them explicitly only for the one case where there
+// isn't a session yet: a failed login attempt.
+function logAudit(string $action, string $description, ?int $userId = null, ?string $username = null, ?string $role = null): void {
+    try {
+        $db = getDB();
+        if ($userId === null) {
+            $u        = currentUser();
+            $userId   = $u['id']   ?? null;
+            $username = $u['name'] ?? null;
+            $role     = $u['role'] ?? null;
+        }
+        $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+        $ua = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 255) : null;
+
+        $db->prepare('
+            INSERT INTO audit_log (user_id, username_snapshot, role_snapshot, action, description, ip_address, user_agent)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ')->execute([$userId, $username, $role, $action, $description, $ip, $ua]);
+    } catch (\Throwable $e) {
+        // Deliberately silent — see doc comment above.
+    }
+}
+
+// Turns a raw User-Agent string into something a human can scan at a
+// glance ("Chrome on Windows") instead of the full raw string. This
+// is a lightweight heuristic, not a proper UA-parsing library — good
+// enough for "what kind of device was this," not for anything that
+// needs to be exact.
+function friendlyDevice(?string $ua): string {
+    if (!$ua) return 'Unknown device';
+    $os =
+        (stripos($ua, 'Windows') !== false)               ? 'Windows' :
+        (stripos($ua, 'Android') !== false)                ? 'Android' :
+        (stripos($ua, 'iPhone') !== false || stripos($ua, 'iPad') !== false) ? 'iOS' :
+        (stripos($ua, 'Mac OS') !== false)                 ? 'macOS' :
+        (stripos($ua, 'Linux') !== false)                  ? 'Linux' : 'Unknown OS';
+    $browser =
+        (stripos($ua, 'Edg/') !== false)     ? 'Edge' :
+        (stripos($ua, 'Chrome/') !== false)  ? 'Chrome' :
+        (stripos($ua, 'Firefox/') !== false) ? 'Firefox' :
+        (stripos($ua, 'Safari/') !== false)  ? 'Safari' : 'Unknown browser';
+    return "$browser on $os";
+}
+
 // ── Auth guards ──────────────────────────────────────────────
 // Call requireLogin() at the top of any endpoint/page that needs a
 // logged-in user. Call requireRole() when only specific role(s)

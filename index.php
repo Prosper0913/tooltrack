@@ -226,6 +226,10 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
                 $results['deactivated'][] = "$deact_count enrollment(s) deactivated for $section_name / $subject_name_g";
             }
         }
+
+        $insCount = count($results['inserted']);
+        $updCount = count($results['updated']);
+        logAudit('cms_sync', "Synced $course / $subject_name from CMS — $insCount new, $updCount updated");
     }
 }
 ?>
@@ -278,6 +282,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
       <div class="nav-section-title">Account</div>
       <?php if ($isAdmin): ?>
       <a class="nav-item" data-page="users"><i class="fas fa-user-shield"></i><span>User Accounts</span></a>
+      <a class="nav-item" data-page="audit"><i class="fas fa-clipboard-list"></i><span>Audit Trail</span></a>
       <?php endif; ?>
       <a class="nav-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
     </div>
@@ -742,6 +747,46 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
             <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead>
             <tbody id="usersTableBody"><tr class="empty-row"><td colspan="5"><span class="spinner dark"></span> Loading…</td></tr></tbody>
           </table>
+        </div>
+      </div>
+    </section>
+    <?php endif; ?>
+
+    <?php if ($isAdmin): ?>
+    <!-- ═══ AUDIT TRAIL ═══ -->
+    <section class="page" id="auditPage">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Audit Trail</h3>
+          <div class="card-actions">
+            <button class="card-btn secondary" onclick="exportAuditLogCSV()"><i class="fas fa-download"></i> Export CSV</button>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <div class="filter-group"><span class="filter-label">Action:</span>
+            <select class="filter-select" id="auditActionFilter">
+              <option value="">All Actions</option>
+            </select>
+          </div>
+          <div class="filter-group"><span class="filter-label">From:</span>
+            <input type="date" class="filter-input" id="auditDateFrom">
+          </div>
+          <div class="filter-group"><span class="filter-label">To:</span>
+            <input type="date" class="filter-input" id="auditDateTo">
+          </div>
+          <div class="filter-group"><input type="text" class="filter-input" id="auditSearchFilter" placeholder="Search user, IP, details…"></div>
+          <button class="filter-btn apply" onclick="applyAuditFilters()">Apply</button>
+          <button class="filter-btn clear" onclick="clearAuditFilters()">Clear</button>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead><tr><th>Timestamp</th><th>User</th><th>Role</th><th>Action</th><th>Details</th><th>IP Address</th><th>Device</th></tr></thead>
+            <tbody id="auditTableBody"><tr class="empty-row"><td colspan="7"><span class="spinner dark"></span> Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <div class="pagination-info" id="auditPaginationInfo"></div>
+          <div class="pagination-btns" id="auditPaginationBtns"></div>
         </div>
       </div>
     </section>

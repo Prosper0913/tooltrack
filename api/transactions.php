@@ -138,6 +138,8 @@ if ($method === 'POST') {
 
             $db->commit();
 
+            logAudit('borrow', "Borrowed {$qty}x {$tool['name']} ({$tool['code']}) for {$borrower['full_name']}, due $due_date");
+
             ok([
                 'id'          => $txn_db_id,
                 'txn_id'      => $txn_id,
@@ -277,6 +279,9 @@ if ($method === 'POST') {
                    ->execute([$qty, $tool['id']]);
             }
             $db->commit();
+
+            $lateNote = $isLate ? ' (LATE)' : '';
+            logAudit('return', "Returned {$qty}x {$tool['name']} ({$tool['code']}) by $returnee_name — condition: $condition$lateNote");
 
             ok([
                 'id'            => $txn_db_id,

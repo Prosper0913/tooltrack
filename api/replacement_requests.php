@@ -68,6 +68,7 @@ if ($method === 'POST') {
     $stmt->execute([$tool_id, $tool_name, $reason, $qty, $notes, $me['id']]);
 
     $id = (int)$db->lastInsertId();
+    logAudit('replacement_request', "Requested replacement: {$qty}x $tool_name ($reason)");
     ok(['id' => $id], 201);
 }
 
@@ -101,6 +102,8 @@ if ($method === 'PATCH') {
         $db->prepare('UPDATE tools SET quantity = quantity + ?, available = available + ? WHERE id = ?')
            ->execute([$req['quantity_needed'], $req['quantity_needed'], $req['tool_id']]);
     }
+
+    logAudit('replacement_resolved', "Marked replacement request for {$req['tool_name_snapshot']} as $status");
 
     ok(['message' => 'Request updated.']);
 }

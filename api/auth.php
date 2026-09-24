@@ -68,6 +68,10 @@ if ($method === 'POST') {
     $user = $stmt->fetch();
 
     if (!$user || !verifyAndMaybeUpgrade($db, (int)$user['id'], $user['password'], $password)) {
+        // Logged with no user_id (failed logins are exactly the kind of
+        // thing an audit trail exists to catch — e.g. repeated attempts
+        // against the same username from an unfamiliar IP).
+        logAudit('login_failed', "Failed login attempt for username '$username'", null, $username, null);
         fail('Invalid username or password.', 401);
     }
 
@@ -77,6 +81,8 @@ if ($method === 'POST') {
     $_SESSION['user_id']   = $user['id'];
     $_SESSION['user_name'] = $user['name'];
     $_SESSION['user_role'] = $user['role'];
+
+    logAudit('login', "Logged in", (int)$user['id'], $user['name'], $user['role']);
 
     ok(userPayload($user));
 }
@@ -103,12 +109,14 @@ if ($method === 'PUT') {
 
     $newHash = password_hash($new, PASSWORD_DEFAULT);
     $db->prepare('UPDATE users SET password = ? WHERE id = ?')->execute([$newHash, $user['id']]);
+    logAudit('password_change', 'Changed own password');
 
     ok(['message' => 'Password updated.']);
 }
 
 // ── DELETE: logout ────────────────────────────────────────────
 if ($method === 'DELETE') {
+    logAudit('logout', 'Logged out');
     $_SESSION = [];
     session_destroy();
     ok(['message' => 'Logged out.']);
