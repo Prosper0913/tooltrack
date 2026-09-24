@@ -124,17 +124,33 @@ function logAudit(string $action, string $description, ?int $userId = null, ?str
 // needs to be exact.
 function friendlyDevice(?string $ua): string {
     if (!$ua) return 'Unknown device';
-    $os =
-        (stripos($ua, 'Windows') !== false)               ? 'Windows' :
-        (stripos($ua, 'Android') !== false)                ? 'Android' :
-        (stripos($ua, 'iPhone') !== false || stripos($ua, 'iPad') !== false) ? 'iOS' :
-        (stripos($ua, 'Mac OS') !== false)                 ? 'macOS' :
-        (stripos($ua, 'Linux') !== false)                  ? 'Linux' : 'Unknown OS';
-    $browser =
-        (stripos($ua, 'Edg/') !== false)     ? 'Edge' :
-        (stripos($ua, 'Chrome/') !== false)  ? 'Chrome' :
-        (stripos($ua, 'Firefox/') !== false) ? 'Firefox' :
-        (stripos($ua, 'Safari/') !== false)  ? 'Safari' : 'Unknown browser';
+
+    if (stripos($ua, 'Windows') !== false) {
+        $os = 'Windows';
+    } elseif (stripos($ua, 'Android') !== false) {
+        $os = 'Android';
+    } elseif (stripos($ua, 'iPhone') !== false || stripos($ua, 'iPad') !== false) {
+        $os = 'iOS';
+    } elseif (stripos($ua, 'Mac OS') !== false) {
+        $os = 'macOS';
+    } elseif (stripos($ua, 'Linux') !== false) {
+        $os = 'Linux';
+    } else {
+        $os = 'Unknown OS';
+    }
+
+    if (stripos($ua, 'Edg/') !== false) {
+        $browser = 'Edge';
+    } elseif (stripos($ua, 'Chrome/') !== false) {
+        $browser = 'Chrome';
+    } elseif (stripos($ua, 'Firefox/') !== false) {
+        $browser = 'Firefox';
+    } elseif (stripos($ua, 'Safari/') !== false) {
+        $browser = 'Safari';
+    } else {
+        $browser = 'Unknown browser';
+    }
+
     return "$browser on $os";
 }
 
