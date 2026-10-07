@@ -368,7 +368,7 @@
     .right-panel img{ animation:none; }
   }
 
-   /* ---------- Responsive ---------- */
+  /* ---------- Responsive ---------- */
   @media (max-width: 900px){
     .body{ background: linear-gradient(135deg, #6b46c1 0%, #8b5cf6 50%, #a855f7 100%);}
     .split{ grid-template-columns:1fr; height: 650px; max-height:670px; min-height:70%; border-radius:12px; }
@@ -469,20 +469,80 @@
 
 </div>
 
+  <!-- Forgot password: self-service reset. No email server on
+       localhost, so the generated link is shown right here instead
+       of being emailed — click it (or copy it) to set a new password. -->
   <div id="forgotPassOverlay" style="display:none;position:fixed;inset:0;background:rgba(11,36,24,0.75);z-index:50;align-items:center;justify-content:center;padding:20px;">
     <div style="background:var(--forest-deep);border:1px solid var(--glass-border);border-radius:14px;max-width:380px;width:100%;padding:28px;color:#f4fbf6;">
-      <h3 style="font-family:'Fraunces',serif;font-weight:600;margin-bottom:12px;">Forgot your password?</h3>
-      <p style="font-size:13.5px;line-height:1.6;color:rgba(244,251,246,0.75);margin-bottom:10px;">Passwords here are reset by an Admin, not by email. If you're Staff, ask any Admin to reset it for you from <strong>User Accounts → the key icon</strong> next to your name.</p>
-      <p style="font-size:13.5px;line-height:1.6;color:rgba(244,251,246,0.75);">If you're the only Admin and you're locked out, ask whoever manages the server to run <code>reset_admin_password.php</code> once (it prompts for a new password and deletes itself).</p>
-      <button type="button" onclick="document.getElementById('forgotPassOverlay').style.display='none'" class="btn-submit" style="margin-top:20px;">Got it</button>
+      <h3 style="font-family:'Fraunces',serif;font-weight:600;margin-bottom:12px;">Reset your password</h3>
+
+      <div id="forgotStep1">
+        <p style="font-size:13.5px;line-height:1.6;color:rgba(244,251,246,0.75);margin-bottom:16px;">Enter your username and we'll generate a reset link for you.</p>
+        <label class="form-label">Username</label>
+        <div class="input-wrapper" style="margin-bottom:10px;">
+          <input type="text" class="form-input" id="forgotUsername" placeholder="Your username" autocomplete="username">
+        </div>
+        <div id="forgotError" style="display:none;color:#ffb4a2;font-size:12.5px;margin-bottom:10px;"></div>
+        <button type="button" class="btn-submit" id="forgotSubmitBtn" onclick="submitForgotPassword()">Get Reset Link</button>
+      </div>
+
+      <div id="forgotStep2" style="display:none;">
+        <p style="font-size:13.5px;line-height:1.6;color:rgba(244,251,246,0.75);margin-bottom:14px;">Here's your reset link — it expires in 30 minutes and works once. Click it now, or copy it and open it in this browser.</p>
+        <div style="background:rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;word-break:break-all;font-size:12px;margin-bottom:14px;">
+          <a id="forgotResetLink" href="#" style="color:var(--mint);"></a>
+        </div>
+        <button type="button" class="btn-submit" onclick="document.getElementById('forgotResetLink').click()">Open Reset Link</button>
+      </div>
+
+      <button type="button" onclick="closeForgotPassword()" style="margin-top:14px;background:none;border:none;color:rgba(244,251,246,.5);font-size:12.5px;cursor:pointer;width:100%;">Close</button>
     </div>
   </div>
 
 <script>
   document.getElementById('forgotPassLink').addEventListener('click',(e)=>{
     e.preventDefault();
+    document.getElementById('forgotStep1').style.display='';
+    document.getElementById('forgotStep2').style.display='none';
+    document.getElementById('forgotUsername').value='';
+    document.getElementById('forgotError').style.display='none';
     document.getElementById('forgotPassOverlay').style.display='flex';
   });
+  function closeForgotPassword(){
+    document.getElementById('forgotPassOverlay').style.display='none';
+  }
+  async function submitForgotPassword(){
+    const username=document.getElementById('forgotUsername').value.trim();
+    const errEl=document.getElementById('forgotError');
+    errEl.style.display='none';
+    if(!username){errEl.textContent='Please enter your username.';errEl.style.display='block';return;}
+    const btn=document.getElementById('forgotSubmitBtn');
+    btn.disabled=true;
+    btn.textContent='Generating…';
+    try{
+      const res=await fetch('api/forgot_password.php',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'request',username})
+      });
+      const data=await res.json();
+      if(data.success){
+        const link=document.getElementById('forgotResetLink');
+        link.href=data.data.reset_url;
+        link.textContent=data.data.reset_url;
+        document.getElementById('forgotStep1').style.display='none';
+        document.getElementById('forgotStep2').style.display='';
+      }else{
+        errEl.textContent=data.message||'Could not generate a reset link.';
+        errEl.style.display='block';
+      }
+    }catch(err){
+      errEl.textContent='Could not reach the server. Please try again.';
+      errEl.style.display='block';
+    }finally{
+      btn.disabled=false;
+      btn.textContent='Get Reset Link';
+    }
+  }
   const toggle = document.getElementById('togglePass');
   const pass = document.getElementById('password');
   const icon = document.getElementById('toggleIcon');
@@ -493,7 +553,6 @@
     icon.classList.toggle('fa-eye-slash');
     toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
   });
-
 
   // ── Login form: submit as JSON via fetch ─────────────────────
   const loginForm = document.getElementById('loginForm');

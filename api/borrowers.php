@@ -29,11 +29,7 @@ if (in_array($method, ['PUT', 'PATCH'], true)) {
 // for type=Student — Faculty/Staff use the school's HR numbering (not
 // specified here) and Guest is by definition someone outside that
 // system, so neither is forced through the student ID shape.
-function validateIdNumber(string $type, string $idNumber): void {
-    if ($type === 'Student' && !preg_match('/^\d{4}-\d{5}$/', $idNumber)) {
-        fail("Student ID must match the school's format: YYYY-XXXXX (e.g. 2024-00123). Got '$idNumber'.");
-    }
-}
+
 
 // ── GET ───────────────────────────────────────────────────────
 if ($method === 'GET') {
@@ -195,7 +191,7 @@ if ($method === 'POST') {
     if (!in_array($type, ['Student', 'Faculty', 'Staff', 'Guest'])) {
     fail("Invalid type. Must be Student, Faculty, Guest or Staff.");
 }
-    validateIdNumber($type, $id_number);
+    $id_number = validateIdNumber($type, $id_number);
 
     // Duplicate ID check
     $check = $db->prepare('SELECT id FROM borrowers WHERE id_number = ?');
@@ -233,7 +229,7 @@ if ($method === 'PUT') {
     if (!in_array($type, ['Student', 'Faculty', 'Staff', 'Guest'])) {
         fail("Invalid type. Must be Student, Faculty, Guest or Staff.");
     }
-    validateIdNumber($type, $id_number);
+    $id_number = validateIdNumber($type, $id_number);
 
     // Check exists
     $existing = $db->prepare('SELECT id FROM borrowers WHERE id = ?');

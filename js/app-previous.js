@@ -144,7 +144,7 @@ function navigateTo(page){
   if(page==='tools')     loadTools();
   if(page==='borrowers') loadBorrowers();
   if(page==='borrow')    { loadBorrowerSelect(); loadBorrowHistory(); loadToolsForBorrow(); loadRecentActivity('borrowActivityFeed','borrow'); }
-  if(page==='return')    { loadReturnHistory(); loadActiveBorrowsForReturn(); loadRecentActivity('returnActivityFeed','return'); loadBorrowerSelect(); }
+  if(page==='return')    { loadReturnHistory(); loadActiveBorrowsForReturn(); loadRecentActivity('returnActivityFeed','return'); }
   if(page==='reports')   loadReports();
   if(page==='users')     loadUsers();
 }
@@ -842,13 +842,7 @@ async function saveBorrower(){
   const sectionId=parseInt(section.value||'0',10);
   const sectionName=section.options[section.selectedIndex]?.dataset?.name||section.options[section.selectedIndex]?.text||'';
   if(!body.full_name||!body.id_number||!body.type){showToast('Please fill in all required fields.','error');return;}
-  // Strip spaces/dashes before validating & storing — a real physical
-  // ID usually has a dash on it (e.g. 2024-00123), but the stored
-  // format is digits-only. Without this, typing the ID exactly as
-  // printed on the card gets wrongly rejected as "not 8-10 digits".
-  body.id_number=body.id_number.replace(/[\s-]/g,'');
-  if(body.type==='Student' && !/^\d{8,10}$/.test(body.id_number)){showToast('Student ID must be 8 to 10 digits (numbers only).','error');return;}
-  if(!course||!sectionId){showToast('Please select a course and section.','error');return;}
+if(body.type==='Student' && !/^\d{8,10}$/.test(body.id_number)){showToast('Student ID must be 8 to 10 digits (numbers only).','error');return;}  if(!course||!sectionId){showToast('Please select a course and section.','error');return;}
   if(id) body.id=parseInt(id,10);
   setLoading('saveBorrowerBtn',true);
   try{
@@ -878,75 +872,18 @@ async function exportBorrowersCSV(){
 /* ───────────────────────────────────────────────────────────
    8. BORROW-PAGE BORROWER SELECT
 ─────────────────────────────────────────────────────────── */
-let borrowerOptionsData=[]; // cached list backing the searchable dropdown below
-
 async function loadBorrowerSelect(){
   try{
     const res=await apiFetch(`${API}/borrowers.php?per_page=9999`);
-    borrowerOptionsData=res.data||[];
     const sel=document.getElementById('borrowerSelect');
     sel.innerHTML='<option value="">Select Borrower…</option>';
-    borrowerOptionsData.forEach(b=>{
+    (res.data||[]).forEach(b=>{
       const o=document.createElement('option');
       o.value=b.id; o.textContent=`${b.full_name} — ${b.id_number}`;
       sel.appendChild(o);
     });
   }catch(_){}
 }
-
-/* ── Searchable borrower dropdown (Borrow page) ─────────────────
-   The hidden <select id="borrowerSelect"> above stays the single
-   source of truth (same id/value/options every other function
-   already reads); this just gives it a type-to-filter UI. */
-function renderBorrowerDropdown(list){
-  const box=document.getElementById('borrowerDropdownList');
-  if(!list.length){
-    box.innerHTML='<div style="padding:10px 14px;color:var(--gray-500,#6b7280);font-size:13px">No matching borrowers</div>';
-    box.style.display='block';
-    return;
-  }
-  box.innerHTML=list.map(b=>
-    `<div class="borrower-dropdown-item" onclick="selectBorrowerOption(${b.id})"
-          style="padding:10px 14px;cursor:pointer;font-size:14px"
-          onmouseover="this.style.background='var(--gray-100,#f3f4f6)'"
-          onmouseout="this.style.background=''">
-       ${escapeHtml(b.full_name)} — ${escapeHtml(b.id_number)}
-     </div>`
-  ).join('');
-  box.style.display='block';
-}
-
-function openBorrowerDropdown(){
-  const q=document.getElementById('borrowerSearchInput').value.trim().toLowerCase();
-  const list=q ? borrowerOptionsData.filter(b=>
-      (b.full_name||'').toLowerCase().includes(q) || (b.id_number||'').toLowerCase().includes(q)
-    ) : borrowerOptionsData;
-  renderBorrowerDropdown(list);
-}
-
-function filterBorrowerDropdown(){
-  document.getElementById('borrowerSelect').value=''; // typing invalidates any prior pick
-  openBorrowerDropdown();
-}
-
-function selectBorrowerOption(id){
-  const b=borrowerOptionsData.find(x=>String(x.id)===String(id));
-  if(!b)return;
-  const sel=document.getElementById('borrowerSelect');
-  sel.value=id;
-  sel.dispatchEvent(new Event('change')); // keeps onBorrowerSelectChange() firing as before
-  document.getElementById('borrowerSearchInput').value=`${b.full_name} — ${b.id_number}`;
-  closeBorrowerDropdown();
-}
-
-function closeBorrowerDropdown(){
-  document.getElementById('borrowerDropdownList').style.display='none';
-}
-
-document.addEventListener('click',function(e){
-  const wrap=document.getElementById('borrowerSearchWrap');
-  if(wrap && !wrap.contains(e.target))closeBorrowerDropdown();
-});
 
 /* ───────────────────────────────────────────────────────────
    9. QR SCANNERS (BORROW & RETURN)
@@ -961,149 +898,50 @@ function setScanStatus(statusId,textId,text,type){
   if(textId)document.getElementById(textId).textContent=text;
 }
 
-/* ── Camera policy ──────────────────────────────────────────
-   • PHONE / TABLET : rear ("environment") camera ONLY. The front camera
-                      is never used and the camera dropdown is hidden.
-   • PC / LAPTOP    : the built-in webcam is NOT used. The camera only
-                      works when an external USB scanner-camera is
-                      plugged in (it shows up as an extra video device).
-   Tune the two patterns below if your scanner/webcam has an unusual
-   name — the detected labels are printed in the browser console
-   ("[camera] detected devices").                                   */
-const CAMERA_POLICY = {
-  // Desktop: labels treated as built-in / virtual cameras → ignored
-  builtIn: /integrated|built-?in|internal|facetime|isight|truevision|macbook|imac|surface|ir camera|infrared|windows hello|laptop|virtual|obs|snap camera|manycam|droidcam|epoccam|iriun|camo/i,
-  // Desktop: labels of known scanner cameras → always allowed
-  scanner: /scan|barcode|qr|symbol|zebra|honeywell|datalogic|newland|netum|eyoyo|opticon|unitech|mindeo/i,
-  // Mobile: label hints when facingMode is not supported
-  rear: /back|rear|environment/i,
-  front: /front|user|selfie|facetime/i
-};
-
-function isMobileDevice(){
-  if(navigator.userAgentData && navigator.userAgentData.mobile===true) return true;
-  const ua=navigator.userAgent||'';
-  if(/Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(ua)) return true;
-  // iPadOS 13+ pretends to be a Mac; touch support gives it away
-  return /Macintosh/i.test(ua) && navigator.maxTouchPoints>1;
-}
-
-function isExternalScannerCamera(dev){
-  const label=dev.label||'';
-  if(CAMERA_POLICY.scanner.test(label)) return true;
-  return !CAMERA_POLICY.builtIn.test(label);
-}
-
-function setCameraFieldVisible(selectId,show){
-  const field=document.getElementById(selectId.replace('Select','Field'));
-  if(field) field.style.display=show?'block':'none';
-}
-
-function resetCameraSelects(){
-  ['borrowCameraSelect','returnCameraSelect'].forEach(id=>{
-    const sel=document.getElementById(id); if(!sel) return;
-    sel.innerHTML='<option value="">Press \'Camera\' to enable</option>';
-    setCameraFieldVisible(id,false);
-  });
-}
-
-function cameraErrorText(err){
-  return String((err && (err.message||err.name)) || err || 'Camera access failed.');
-}
-
-/* Desktop only: list cameras, drop built-in webcams, fill the dropdown. */
 function loadCameras(selectId){
   return Html5Qrcode.getCameras().then(devices=>{
-    console.info('[camera] detected devices:', (devices||[]).map(d=>d.label||d.id));
     const sel=document.getElementById(selectId);
     sel.innerHTML='';
-    const allowed=(devices||[]).filter(isExternalScannerCamera);
-    if(!allowed.length){
-      sel.innerHTML='<option value="">No USB scanner camera detected</option>';
-      setCameraFieldVisible(selectId,false);
-      return allowed;
-    }
-    allowed.forEach((d,i)=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.label||`Scanner camera ${i+1}`;sel.appendChild(o);});
-    setCameraFieldVisible(selectId,allowed.length>1);
-    return allowed;
+    if(!devices||!devices.length){sel.innerHTML='<option value="">No cameras detected</option>';return devices;}
+    devices.forEach((d,i)=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.label||`Camera ${i+1}`;sel.appendChild(o);});
+    return devices;
   }).catch(err=>{
-    // Surface the REAL reason — on a desktop this is very often the page
-    // being loaded over http:// from something other than localhost
-    // (camera access needs https:// or http://localhost).
+    // Surface the REAL reason instead of a generic "denied" — on a
+    // desktop this is very often not a permission denial at all, but
+    // the page being loaded over http:// from something other than
+    // localhost (camera access requires a secure context: https://
+    // or http://localhost, per browser policy — not something this
+    // app's code can override).
     const msg=String(err && (err.message||err)) || 'Unknown error';
-    const hint = window.isSecureContext ? msg : `Camera blocked: this page must be opened via https:// or http://localhost — "${location.hostname}" doesn't qualify for camera access in most browsers.`;
-    document.getElementById(selectId).innerHTML=`<option value="">${window.isSecureContext?'Camera error: '+msg:'Not a secure context'}</option>`;
+    const isSecureCtx = window.isSecureContext;
+    const hint = isSecureCtx ? msg : `Camera blocked: this page must be opened via https:// or http://localhost — "${location.hostname}" doesn't qualify for camera access in most browsers.`;
+    document.getElementById(selectId).innerHTML=`<option value="">${isSecureCtx?'Camera error: '+msg:'Not a secure context'}</option>`;
     console.error('Camera enumeration failed:', hint);
     throw new Error(hint);
   });
 }
 
-/* Mobile fallback: find the rear camera by label (never the front one). */
-async function findRearCameraId(){
-  const devices=await Html5Qrcode.getCameras();
-  const rear=(devices||[]).find(d=>CAMERA_POLICY.rear.test(d.label||'') && !CAMERA_POLICY.front.test(d.label||''));
-  if(!rear) throw new Error('No rear camera found on this device.');
-  return rear.id;
-}
-
-/* Starts the camera according to the policy above.
-   beforeStart() is called once a camera source is known (used to show the viewport). */
-async function openCamera(qr,selectId,onDecode,beforeStart){
-  if(!window.isSecureContext || !navigator.mediaDevices){
-    throw new Error('Camera blocked: this page must be opened via https:// or http://localhost.');
-  }
-  const scanCfg={fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};}};
-  const onFail=()=>{};
-
-  if(isMobileDevice()){
-    setCameraFieldVisible(selectId,false);          // no camera choice on phones
-    if(beforeStart) beforeStart();
-    try{
-      // "exact" = rear camera or fail — it will never fall back to the front cam
-      await qr.start({facingMode:{exact:'environment'}},scanCfg,onDecode,onFail);
-    }catch(err){
-      if(err && (err.name==='NotAllowedError' || /permission|denied|notallowed/i.test(String(err)))) throw err;
-      const id=await findRearCameraId();            // some browsers reject facingMode
-      await qr.start(id,scanCfg,onDecode,onFail);
-    }
-    return;
-  }
-
-  // PC / laptop → only an external USB scanner camera is accepted
-  const sel=document.getElementById(selectId);
-  if(!sel.value){
-    const allowed=await loadCameras(selectId);
-    if(!allowed.length){
-      throw new Error('No USB scanner camera detected. Plug in the scanner and press Camera again (the laptop webcam is disabled).');
-    }
-  }
-  if(beforeStart) beforeStart();
-  try{
-    await qr.start(sel.value,scanCfg,onDecode,onFail);
-  }catch(err){
-    sel.innerHTML='<option value="">Press \'Camera\' to enable</option>'; // force re-detect next time
-    throw err;
-  }
-}
-
 async function startBorrowScanner(){
   if(borrowScanning)return;
-  const S=(t,ty)=>setScanStatus('borrowScanStatus','borrowScanStatusText',t,ty);
-  S('Requesting camera access…','scanning');
-  try{
-    await openCamera(borrowQr,'borrowCameraSelect',
-      decoded=>{document.getElementById('borrowToolId').value=decoded;document.getElementById('clearBorrowToolBtn').classList.add('visible');matchBorrowToolCode(decoded);setScanStatus('borrowScanStatus','borrowScanStatusText','✓ Scanned: '+decoded,'success');stopBorrowScanner();},
-      ()=>{
-        document.getElementById('borrowReader').style.display='block';
-        document.getElementById('borrowStartBtn').style.display='none';
-        document.getElementById('borrowStopBtn').style.display='flex';
-      });
-    borrowScanning=true;
-    S('Scanning — point camera at QR code…','scanning');
-  }catch(err){
-    S(cameraErrorText(err),'error');
-    resetBorrowScannerUI();
+  const sel=document.getElementById('borrowCameraSelect');
+  if(!sel.value){
+    // Cameras haven't been enumerated yet — this is the FIRST point
+    // the browser's camera permission prompt appears, deliberately
+    // deferred until the user actually presses this button rather
+    // than on page load.
+    setScanStatus('borrowScanStatus','borrowScanStatusText','Requesting camera access…','scanning');
+    try{ await loadCameras('borrowCameraSelect'); }
+    catch(err){ setScanStatus('borrowScanStatus','borrowScanStatusText',err.message||'Camera access failed.','error'); return; }
   }
+  const camId=sel.value;
+  if(!camId){setScanStatus('borrowScanStatus','borrowScanStatusText','No camera available.','error');return;}
+  document.getElementById('borrowReader').style.display='block';
+  document.getElementById('borrowStartBtn').style.display='none';
+  document.getElementById('borrowStopBtn').style.display='flex';
+  setScanStatus('borrowScanStatus','borrowScanStatusText','Scanning — point camera at QR code…','scanning');
+  borrowQr.start(camId,{fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};}},
+    decoded=>{document.getElementById('borrowToolId').value=decoded;document.getElementById('clearBorrowToolBtn').classList.add('visible');matchBorrowToolCode(decoded);setScanStatus('borrowScanStatus','borrowScanStatusText','✓ Scanned: '+decoded,'success');stopBorrowScanner();},()=>{}
+  ).then(()=>borrowScanning=true).catch(err=>{setScanStatus('borrowScanStatus','borrowScanStatusText','Cannot start: '+err,'error');resetBorrowScannerUI();});
 }
 function stopBorrowScanner(){if(!borrowScanning){resetBorrowScannerUI();return;}borrowQr.stop().then(()=>{borrowScanning=false;resetBorrowScannerUI();}).catch(()=>{borrowScanning=false;resetBorrowScannerUI();});}
 function resetBorrowScannerUI(){document.getElementById('borrowReader').style.display='none';document.getElementById('borrowStartBtn').style.display='flex';document.getElementById('borrowStopBtn').style.display='none';}
@@ -1128,28 +966,28 @@ function onBorrowerNameInput(){
   const idnum=document.getElementById('borrowerIdNumberInput').value.trim();
   if(name||idnum){
     document.getElementById('borrowerSelect').value='';
-    document.getElementById('borrowerSearchInput').value='';
   }
 }
 
-async function startReturnScanner(){
+function startReturnScanner(){
   if(returnScanning)return;
-  const S=(t,ty)=>setScanStatus('returnScanStatus','returnScanStatusText',t,ty);
-  S('Requesting camera access…','scanning');
-  try{
-    await openCamera(returnQr,'returnCameraSelect',
-      decoded=>{document.getElementById('returnToolId').value=decoded;document.getElementById('clearReturnToolBtn').classList.add('visible');matchReturnToolCode(decoded);setScanStatus('returnScanStatus','returnScanStatusText','✓ Scanned: '+decoded,'success');stopReturnScanner();},
-      ()=>{
-        document.getElementById('returnReader').style.display='block';
-        document.getElementById('returnStartBtn').style.display='none';
-        document.getElementById('returnStopBtn').style.display='flex';
-      });
-    returnScanning=true;
-    S('Scanning…','scanning');
-  }catch(err){
-    S(cameraErrorText(err),'error');
-    resetReturnScannerUI();
+  const sel=document.getElementById('returnCameraSelect');
+  const go=(camId)=>{
+    if(!camId){setScanStatus('returnScanStatus','returnScanStatusText','No camera available.','error');return;}
+    document.getElementById('returnReader').style.display='block';
+    document.getElementById('returnStartBtn').style.display='none';
+    document.getElementById('returnStopBtn').style.display='flex';
+    setScanStatus('returnScanStatus','returnScanStatusText','Scanning…','scanning');
+    returnQr.start(camId,{fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};}},
+      decoded=>{document.getElementById('returnToolId').value=decoded;document.getElementById('clearReturnToolBtn').classList.add('visible');matchReturnToolCode(decoded);setScanStatus('returnScanStatus','returnScanStatusText','✓ Scanned: '+decoded,'success');stopReturnScanner();},()=>{}
+    ).then(()=>returnScanning=true).catch(err=>{setScanStatus('returnScanStatus','returnScanStatusText','Cannot start: '+err,'error');resetReturnScannerUI();});
+  };
+  if(!sel.value){
+    setScanStatus('returnScanStatus','returnScanStatusText','Requesting camera access…','scanning');
+    loadCameras('returnCameraSelect').then(()=>go(sel.value)).catch(err=>setScanStatus('returnScanStatus','returnScanStatusText',err.message||'Camera access failed.','error'));
+    return;
   }
+  go(sel.value);
 }
 function stopReturnScanner(){if(!returnScanning){resetReturnScannerUI();return;}returnQr.stop().then(()=>{returnScanning=false;resetReturnScannerUI();}).catch(()=>{returnScanning=false;resetReturnScannerUI();});}
 function resetReturnScannerUI(){document.getElementById('returnReader').style.display='none';document.getElementById('returnStartBtn').style.display='flex';document.getElementById('returnStopBtn').style.display='none';}
@@ -1166,20 +1004,13 @@ let activeBorrowsCache=[]; // loaded whenever the Return page is opened
 
 async function loadActiveBorrowsForReturn(){
   const sel=document.getElementById('returnSelect');
-  const searchInput=document.getElementById('returnItemSearchInput');
   sel.innerHTML='<option value="">Loading active borrows…</option>';
-  if(searchInput){searchInput.disabled=true;searchInput.placeholder='Loading active borrows…';}
   try{
     const res=await apiFetch(`${API}/transactions.php?type=borrow&status=active&per_page=200`);
     activeBorrowsCache=(res.data||[]).filter(t=>(t.qty-t.qty_returned)>0);
     renderReturnSelectOptions(activeBorrowsCache);
-    if(searchInput){
-      searchInput.disabled=false;
-      searchInput.placeholder=activeBorrowsCache.length?'Search by tool name, code, or borrower…':'Nothing currently borrowed';
-    }
   }catch(_){
     sel.innerHTML='<option value="">Failed to load — try again</option>';
-    if(searchInput){searchInput.disabled=false;searchInput.placeholder='Failed to load — try again';}
   }
 }
 
@@ -1202,7 +1033,6 @@ function renderReturnSelectOptions(list){
 function onReturnSelectChange(){
   const id=document.getElementById('returnSelect').value;
   const hint=document.getElementById('returnSelectHint');
-  const searchInput=document.getElementById('returnItemSearchInput');
   if(!id){hint.textContent='';return;}
   const t=activeBorrowsCache.find(x=>String(x.id)===id);
   if(!t){hint.textContent='';return;}
@@ -1213,121 +1043,7 @@ function onReturnSelectChange(){
   qtyInput.max=outstanding;
   qtyInput.value=outstanding;
   hint.textContent=`Borrowed by ${t.borrower||'Unknown'} · due ${t.due_date||'—'} · ${outstanding} unit(s) outstanding`;
-  // Keep the visible search box in sync no matter how returnSelect's value
-  // was set (dropdown click, QR scan, or typed tool code via matchReturnToolCode).
-  if(searchInput) searchInput.value=`${t.tool_name} (${t.tool_code}) — ${t.borrower||'Unknown'}`;
 }
-
-/* ── Searchable "Borrowed Item" dropdown (Return page) ──────────
-   Mirrors the borrower dropdown on the Borrow page: the hidden
-   <select id="returnSelect"> stays the single source of truth (same
-   id/value/onchange every other function already reads); this just
-   gives it a type-to-filter UI over activeBorrowsCache. */
-function renderReturnItemDropdown(list){
-  const box=document.getElementById('returnItemDropdownList');
-  if(!list.length){
-    box.innerHTML='<div style="padding:10px 14px;color:var(--gray-500,#6b7280);font-size:13px">No matching active borrows</div>';
-    box.style.display='block';
-    return;
-  }
-  box.innerHTML=list.map(t=>{
-    const outstanding=t.qty-t.qty_returned;
-    const overdue=t.due_date && t.due_date<new Date().toISOString().slice(0,10);
-    return `<div class="return-item-dropdown-item" onclick="selectReturnItemOption(${t.id})"
-          style="padding:10px 14px;cursor:pointer;font-size:14px"
-          onmouseover="this.style.background='var(--gray-100,#f3f4f6)'"
-          onmouseout="this.style.background=''">
-       ${escapeHtml(t.tool_name)} (${escapeHtml(t.tool_code)}) — ${escapeHtml(t.borrower||'Unknown')} · Qty ${outstanding} · Due ${t.due_date||'—'}${overdue?' ⚠ overdue':''}
-     </div>`;
-  }).join('');
-  box.style.display='block';
-}
-
-function openReturnItemDropdown(){
-  const q=document.getElementById('returnItemSearchInput').value.trim().toLowerCase();
-  const list=q ? activeBorrowsCache.filter(t=>
-      (t.tool_name||'').toLowerCase().includes(q) ||
-      (t.tool_code||'').toLowerCase().includes(q) ||
-      (t.borrower||'').toLowerCase().includes(q)
-    ) : activeBorrowsCache;
-  renderReturnItemDropdown(list);
-}
-
-function filterReturnItemDropdown(){
-  document.getElementById('returnSelect').value=''; // typing invalidates any prior pick
-  openReturnItemDropdown();
-}
-
-function selectReturnItemOption(id){
-  const t=activeBorrowsCache.find(x=>String(x.id)===String(id));
-  if(!t)return;
-  const sel=document.getElementById('returnSelect');
-  sel.value=id;
-  sel.dispatchEvent(new Event('change')); // keeps onReturnSelectChange() firing as before
-  closeReturnItemDropdown();
-}
-
-function closeReturnItemDropdown(){
-  document.getElementById('returnItemDropdownList').style.display='none';
-}
-
-document.addEventListener('click',function(e){
-  const wrap=document.getElementById('returnItemSearchWrap');
-  if(wrap && !wrap.contains(e.target))closeReturnItemDropdown();
-});
-
-/* ── Searchable "Returnee Name" dropdown (Return page) ───────────
-   returneeName stays a plain text field (the API just takes free
-   text), so there's no hidden select to sync — selecting a match
-   simply fills the box with that borrower's name. Backed by the
-   same borrowerOptionsData cache the Borrow page's borrower search
-   uses, so it also lets staff type a brand-new name if the returnee
-   isn't an existing borrower. */
-function renderReturneeDropdown(list){
-  const box=document.getElementById('returneeDropdownList');
-  if(!list.length){
-    box.innerHTML='<div style="padding:10px 14px;color:var(--gray-500,#6b7280);font-size:13px">No matching borrowers</div>';
-    box.style.display='block';
-    return;
-  }
-  box.innerHTML=list.map(b=>
-    `<div class="returnee-dropdown-item" onclick="selectReturneeOption(${b.id})"
-          style="padding:10px 14px;cursor:pointer;font-size:14px"
-          onmouseover="this.style.background='var(--gray-100,#f3f4f6)'"
-          onmouseout="this.style.background=''">
-       ${escapeHtml(b.full_name)} — ${escapeHtml(b.id_number)}
-     </div>`
-  ).join('');
-  box.style.display='block';
-}
-
-function openReturneeDropdown(){
-  const q=document.getElementById('returneeName').value.trim().toLowerCase();
-  const list=q ? borrowerOptionsData.filter(b=>
-      (b.full_name||'').toLowerCase().includes(q) || (b.id_number||'').toLowerCase().includes(q)
-    ) : borrowerOptionsData;
-  renderReturneeDropdown(list);
-}
-
-function filterReturneeDropdown(){
-  openReturneeDropdown();
-}
-
-function selectReturneeOption(id){
-  const b=borrowerOptionsData.find(x=>String(x.id)===String(id));
-  if(!b)return;
-  document.getElementById('returneeName').value=b.full_name;
-  closeReturneeDropdown();
-}
-
-function closeReturneeDropdown(){
-  document.getElementById('returneeDropdownList').style.display='none';
-}
-
-document.addEventListener('click',function(e){
-  const wrap=document.getElementById('returneeSearchWrap');
-  if(wrap && !wrap.contains(e.target))closeReturneeDropdown();
-});
 
 // Called whenever the Tool Code field changes (typed, scanned, or from
 // an uploaded QR image) — cross-checks it against the currently loaded
@@ -1368,8 +1084,6 @@ function clearReturnToolId(){
   setScanStatus('returnScanStatus','returnScanStatusText','','');
   document.getElementById('returnSelect').value='';
   document.getElementById('returnSelectHint').textContent='';
-  const returnItemSearchInput=document.getElementById('returnItemSearchInput');
-  if(returnItemSearchInput) returnItemSearchInput.value='';
   renderReturnSelectOptions(activeBorrowsCache);
 }
 let allToolsCache=[]; // loaded whenever the Borrow page is opened
@@ -1474,13 +1188,10 @@ async function handleBorrow(){
     // New borrower typed in → create the record first, then use its id
     if(!finalBorrowerId){
     const borrowerType=document.getElementById('borrowerTypeInput').value || 'Guest';
-    // Same normalization as saveBorrower() — strip dashes/spaces so a
-    // real ID like 2024-00123 isn't wrongly rejected.
-    const cleanIdNumber=borrowerIdNumber.replace(/[\s-]/g,'');
-    if(borrowerType==='Student' && !/^\d{8,10}$/.test(cleanIdNumber)){showToast('Student ID must be 8 to 10 digits (numbers only).','error');setLoading('borrowSubmitBtn',false);return;}
+    if(borrowerType==='Student' && !/^\d{4}-\d{5}$/.test(borrowerIdNumber)){showToast('Student ID must match the school format: YYYY-XXXXX (e.g. 2024-00123).','error');setLoading('borrowSubmitBtn',false);return;}
     const newBorrower=await apiFetch(`${API}/borrowers.php`,{method:'POST',body:JSON.stringify({
     full_name:borrowerName,
-    id_number:cleanIdNumber,
+    id_number:borrowerIdNumber,
     type:borrowerType
       
   })});
@@ -1496,7 +1207,6 @@ async function handleBorrow(){
     loadBorrowHistory();
     clearBorrowToolId();
     document.getElementById('borrowerSelect').value='';
-    document.getElementById('borrowerSearchInput').value='';
     document.getElementById('borrowerNameInput').value='';
     document.getElementById('borrowerIdNumberInput').value='';
     document.getElementById('borrowerTypeInput').value='';
@@ -1583,14 +1293,6 @@ function addActivityItem(feedId, type, title, sub){
 function toggleBorrowHistory(){
   const box=document.getElementById('borrowHistoryTableContainer');
   const icon=document.getElementById('borrowHistoryChevron');
-  const isOpen=!box.classList.contains('collapsed');
-  box.classList.toggle('collapsed', isOpen);
-  icon.classList.toggle('open', !isOpen);
-}
-
-function toggleReturnHistory(){
-  const box=document.getElementById('returnHistoryTableContainer');
-  const icon=document.getElementById('returnHistoryChevron');
   const isOpen=!box.classList.contains('collapsed');
   box.classList.toggle('collapsed', isOpen);
   icon.classList.toggle('open', !isOpen);
@@ -1836,13 +1538,8 @@ window.addEventListener('load',()=>{
   // triggers the browser's camera permission prompt, and we only want
   // that happening when the user actually presses "Camera" (see
   // startBorrowScanner/startReturnScanner), not on every page load.
-  resetCameraSelects();
-  // Plugging / unplugging a USB scanner → force a fresh camera scan next time
-  if(navigator.mediaDevices && navigator.mediaDevices.addEventListener){
-    navigator.mediaDevices.addEventListener('devicechange',()=>{
-      if(!isMobileDevice() && !borrowScanning && !returnScanning) resetCameraSelects();
-    });
-  }
+  document.getElementById('borrowCameraSelect').innerHTML='<option value="">Press \'Camera\' to enable</option>';
+  document.getElementById('returnCameraSelect').innerHTML='<option value="">Press \'Camera\' to enable</option>';
   const due=new Date(Date.now()+7*24*60*60*1000);
   document.getElementById('borrowDueDate').valueAsDate=due;
   loadCurrentUser();

@@ -59,19 +59,27 @@ if ($method === 'POST') {
     $stmt->execute([$borrowerId, $cmsSectionId]);
     $existing = $stmt->fetch();
 
-    if ($existing) {
-        $stmt = $db->prepare('UPDATE borrower_enrollments
-                              SET course=?, section_name=?, is_active=1, synced_at=NOW()
-                              WHERE id=?');
-        $stmt->execute([$course, $sectionName, $existing['id']]);
-        $id = (int)$existing['id'];
-    } else {
-        $stmt = $db->prepare('INSERT INTO borrower_enrollments
-            (borrower_id, cms_section_id, cms_subject_id, course, section_name,
-             subject_code, subject_name, is_active, synced_at)
-            VALUES (?, ?, 0, ?, ?, "", "Manual Section Enrollment", 1, NOW())');
-        $stmt->execute([$borrowerId, $cmsSectionId, $course, $sectionName]);
-        $id = (int)$db->lastInsertId();
+    // Any constraint violation (e.g. a unique-key collision) throws a
+    // PDOException, since bootstrap.php sets PDO::ERRMODE_EXCEPTION.
+    // Catch it here so a DB error fails cleanly as JSON instead of an
+    // uncaught fatal error printing HTML into the response.
+    try {
+        if ($existing) {
+            $stmt = $db->prepare('UPDATE borrower_enrollments
+                                  SET course=?, section_name=?, is_active=1, synced_at=NOW()
+                                  WHERE id=?');
+            $stmt->execute([$course, $sectionName, $existing['id']]);
+            $id = (int)$existing['id'];
+        } else {
+            $stmt = $db->prepare('INSERT INTO borrower_enrollments
+                (borrower_id, cms_section_id, cms_subject_id, course, section_name,
+                 subject_code, subject_name, is_active, synced_at)
+                VALUES (?, ?, 0, ?, ?, "", "Manual Section Enrollment", 1, NOW())');
+            $stmt->execute([$borrowerId, $cmsSectionId, $course, $sectionName]);
+            $id = (int)$db->lastInsertId();
+        }
+    } catch (PDOException $e) {
+        fail('Could not save enrollment: ' . $e->getMessage(), 500);
     }
 
     $stmt = $db->prepare('SELECT * FROM borrower_enrollments WHERE id = ?');
@@ -90,11 +98,24 @@ if ($method === 'PUT') {
         fail('Enrollment, course, section, and CMS section are required.');
     }
 
-    $stmt = $db->prepare('UPDATE borrower_enrollments
-                          SET cms_section_id=?, course=?, section_name=?, is_active=1, synced_at=NOW()
-                          WHERE id=? AND cms_subject_id=0');
-    $stmt->execute([$cmsSectionId, $course, $sectionName, $id]);
-    if ($stmt->rowCount() === 0) fail('Manual enrollment not found.', 404);
+    // Check existence up front rather than trusting the UPDATE's
+    // rowCount() — for an UPDATE, rowCount() reports rows *changed*,
+    // not rows *matched*. Saving with identical values (e.g. editing
+    // a borrower's name/phone without touching their course/section)
+    // would change 0 rows and incorrectly report "not found" even
+    // though the enrollment exists and the save should succeed.
+    $existing = $db->prepare('SELECT id FROM borrower_enrollments WHERE id = ? AND cms_subject_id = 0');
+    $existing->execute([$id]);
+    if (!$existing->fetch()) fail('Manual enrollment not found.', 404);
+
+    try {
+        $stmt = $db->prepare('UPDATE borrower_enrollments
+                              SET cms_section_id=?, course=?, section_name=?, is_active=1, synced_at=NOW()
+                              WHERE id=? AND cms_subject_id=0');
+        $stmt->execute([$cmsSectionId, $course, $sectionName, $id]);
+    } catch (PDOException $e) {
+        fail('Could not save enrollment: ' . $e->getMessage(), 500);
+    }
 
     $stmt = $db->prepare('SELECT * FROM borrower_enrollments WHERE id = ?');
     $stmt->execute([$id]);

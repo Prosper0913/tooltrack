@@ -11,6 +11,19 @@
 //  directly.
 // ================================================================
 
+// ── Error handling ──────────────────────────────────────────────
+// display_errors OFF: a PHP warning/notice/fatal error must never be
+// allowed to print HTML (e.g. "<br />\n<b>Warning</b>: ...") into the
+// middle of what's supposed to be a pure JSON response — that's what
+// breaks res.json() in app.js with "Unexpected token '<'". Instead,
+// log_errors ON writes the same info to the PHP error log, where you
+// can actually go read it without it corrupting the API response.
+// Flip display_errors back on temporarily on your own dev machine if
+// you want errors inline in the browser while debugging.
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
+
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'tooltrack_db');
 define('DB_USER', 'root');        // your MySQL username
@@ -117,4 +130,23 @@ function requireRole($roles): array {
         fail('You do not have permission to perform this action.', 403);
     }
     return $user;
+}
+
+// ── ID number validation/normalization ──────────────────────────
+// Strips spaces and dashes before checking — so "2024-00123",
+// "2024 00123", and "202400123" are all treated as the same ID. This
+// matters because a real physical school ID usually has a dash on
+// it, but the stored/validated format is digits-only; without this
+// normalization, someone typing the ID exactly as printed on their
+// card gets rejected even though it's "correct". Only Student is
+// held to the 8-10 digit shape — Faculty/Staff use the school's HR
+// numbering (unspecified here) and Guest isn't in that system at all.
+// Returns the normalized value to store; fail()s (exits) on an
+// invalid Student ID.
+function validateIdNumber(string $type, string $idNumber): string {
+    $clean = preg_replace('/[\s\-]/', '', $idNumber);
+    if ($type === 'Student' && !preg_match('/^\d{8,10}$/', $clean)) {
+        fail('Student ID must be 8 to 10 digits (numbers only).');
+    }
+    return $clean;
 }

@@ -223,21 +223,29 @@ if ($method === 'POST') {
         // unusable). 'good' and 'minor wear' both go back into service.
         $removeFromStock = in_array($condition, ['damaged', 'missing'], true);
 
-        // Was this specific loan returned after its due date? Computed
-        // once here and persisted on the borrow row (rather than only
-        // ever computed on the fly), so "late returns" can be filtered/
-        // reported on directly.
-        $isLate = $borrow && !empty($borrow['due_date']) && date('Y-m-d') > $borrow['due_date'];
+        // Was this specific loan returned after its due date? "Today"
+        // is read from the DB server's own clock (CURDATE()) rather
+        // than PHP's date('Y-m-d') — see the returned_at note just
+        // below for why mixing the app server's clock with the DB
+        // server's clock is exactly what caused the timestamp bug.
+        $today  = $db->query('SELECT CURDATE()')->fetchColumn();
+        $isLate = $borrow && !empty($borrow['due_date']) && $today > $borrow['due_date'];
 
         $db->beginTransaction();
         try {
             $txn_id = generateTxnId();
-            $now    = date('Y-m-d H:i:s');
 
-            // Insert return transaction
+            // Insert return transaction. `returned_at` is set with SQL's
+            // NOW() instead of PHP's date('Y-m-d H:i:s') so it comes from
+            // the exact same clock as `created_at`'s DEFAULT CURRENT_TIMESTAMP.
+            // Previously returned_at used the app server's clock while
+            // created_at used the DB server's clock — if those two clocks
+            // (or their configured timezones) don't agree, the two columns
+            // drift apart, which is why "Returned At" was showing up hours
+            // earlier than "Created At" on the very same row.
             $ins = $db->prepare('
-                INSERT INTO transactions (txn_id, type, tool_id, borrower_id, status, `condition`, notes, returnee_name, returned_at, qty)
-                VALUES (?, "return", ?, ?, "returned", ?, ?, ?, ?, ?)
+                INSERT INTO transactions (txn_id, type, tool_id, borrower_id, status, `condition`, notes, returnee_name, returned_at, qty, borrow_txn_id)
+                VALUES (?, "return", ?, ?, "returned", ?, ?, ?, NOW(), ?, ?)
             ');
             $ins->execute([
                 $txn_id,
@@ -246,17 +254,18 @@ if ($method === 'POST') {
                 $condition,
                 $notes,
                 $returnee_name,
-                $now,
                 $qty,
+                $borrow['id'] ?? null, // links this return back to the borrow it closes out
             ]);
             $txn_db_id = (int)$db->lastInsertId();
 
             // Update original borrow row
             if ($borrow) {
-                $newReturned    = (int)$borrow['qty_returned'] + $qty;
-                $fullyReturned  = $newReturned >= (int)$borrow['qty'];
-                $db->prepare("UPDATE transactions SET qty_returned=?, status=?, returned_at=?, is_late=? WHERE id=?")
-                   ->execute([$newReturned, $fullyReturned ? 'returned' : 'active', $fullyReturned ? $now : null, $isLate ? 1 : 0, $borrow['id']]);
+                $newReturned      = (int)$borrow['qty_returned'] + $qty;
+                $fullyReturned    = $newReturned >= (int)$borrow['qty'];
+                $returnedAtSql    = $fullyReturned ? 'NOW()' : 'NULL'; // fixed literals, not user input — safe to inline
+                $db->prepare("UPDATE transactions SET qty_returned=?, status=?, returned_at=$returnedAtSql, is_late=? WHERE id=?")
+                   ->execute([$newReturned, $fullyReturned ? 'returned' : 'active', $isLate ? 1 : 0, $borrow['id']]);
 
                 if ($fullyReturned) {
                     $db->prepare('UPDATE borrowers SET active_borrows = GREATEST(active_borrows - 1, 0) WHERE id = ?')

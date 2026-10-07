@@ -310,7 +310,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
       </div>
     </div>
     <div class="header-right">
-      <div class="search-box"><i class="fas fa-search"></i><input type="text" id="globalSearch" name="tool_search_q" placeholder="Search for tools" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true"></div>
+      <div class="search-box"><i class="fas fa-search"></i><input type="text" id="globalSearch" placeholder="Search for tools"></div>
       <div style="display:flex;gap:8px;position:relative">
         <button class="header-btn" id="notifBtn" onclick="toggleNotifPanel()"><i class="fas fa-bell"></i><span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;min-width:16px;height:16px;padding:0 4px;background:var(--danger,#ef4444);color:#fff;border-radius:9px;border:2px solid #fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;line-height:1"></span></button>
         <button class="header-btn" onclick="openSettingsModal()"><i class="fas fa-cog"></i></button>
@@ -453,10 +453,8 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
         <div class="br-card">
           <div class="br-card-header"><div class="br-card-header-icon borrow"><i class="fas fa-hand-holding"></i></div><h3>Borrow Tool</h3></div>
           <div class="br-card-body">
-            <div id="borrowCameraField" style="display:none">
-              <label class="field-label"><i class="fas fa-video"></i> Camera Device</label>
-              <select class="form-input-full" id="borrowCameraSelect"><option value="">Press "Camera" to enable</option></select>
-            </div>
+            <label class="field-label"><i class="fas fa-video"></i> Camera Device</label>
+            <select class="form-input-full" id="borrowCameraSelect"><option value="">Press "Camera" to enable</option></select>
 
             <div class="scanner-zone">
               <div class="scanner-zone-label"><i class="fas fa-qrcode"></i> QR Code Scanner</div>
@@ -555,10 +553,8 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
         <div class="br-card">
           <div class="br-card-header"><div class="br-card-header-icon return"><i class="fas fa-undo"></i></div><h3>Return Tool</h3></div>
           <div class="br-card-body">
-            <div id="returnCameraField" style="display:none">
-              <label class="field-label"><i class="fas fa-video"></i> Camera Device</label>
-              <select class="form-input-full" id="returnCameraSelect"><option value="">Press "Camera" to enable</option></select>
-            </div>
+            <label class="field-label"><i class="fas fa-video"></i> Camera Device</label>
+            <select class="form-input-full" id="returnCameraSelect"><option value="">Press "Camera" to enable</option></select>
 
             <div class="scanner-zone">
               <div class="scanner-zone-label"><i class="fas fa-qrcode"></i> QR Code Scanner</div>
@@ -581,19 +577,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
             </div>
 
             <label class="field-label">Borrowed Item *</label>
-            <div id="returnItemSearchWrap" style="position:relative">
-              <input type="text" class="form-input-full" id="returnItemSearchInput"
-                     placeholder="Search by tool name, code, or borrower…" autocomplete="off"
-                     oninput="filterReturnItemDropdown()" onfocus="openReturnItemDropdown()">
-              <div id="returnItemDropdownList"
-                   style="display:none;position:absolute;top:100%;left:0;right:0;z-index:40;background:#fff;
-                          border:1px solid var(--gray-200,#e5e7eb);border-radius:8px;margin-top:4px;
-                          max-height:240px;overflow-y:auto;box-shadow:0 10px 30px rgba(0,0,0,.12)"></div>
-            </div>
-            <!-- Real value still lives here — the search box above just drives it,
-                 so every place in app.js that reads returnSelect.value / .options
-                 (onReturnSelectChange, matchReturnToolCode, etc.) keeps working unchanged. -->
-            <select class="form-input-full" id="returnSelect" onchange="onReturnSelectChange()" style="display:none">
+            <select class="form-input-full" id="returnSelect" onchange="onReturnSelectChange()">
               <option value="">Loading active borrows…</option>
             </select>
             <p id="returnSelectHint" style="font-size:12px;color:var(--gray-500);margin:-8px 0 12px;min-height:16px"></p>
@@ -602,15 +586,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
 
             <input type="number" class="form-input-full" id="returnQty" min="1" value="1">
             <label class="field-label">Returnee Name *</label>
-            <div id="returneeSearchWrap" style="position:relative">
-              <input type="text" class="form-input-full" id="returneeName"
-                     placeholder="Search borrower by name or ID, or type a new name" required
-                     autocomplete="off" oninput="filterReturneeDropdown()" onfocus="openReturneeDropdown()">
-              <div id="returneeDropdownList"
-                   style="display:none;position:absolute;top:100%;left:0;right:0;z-index:40;background:#fff;
-                          border:1px solid var(--gray-200,#e5e7eb);border-radius:8px;margin-top:4px;
-                          max-height:240px;overflow-y:auto;box-shadow:0 10px 30px rgba(0,0,0,.12)"></div>
-            </div>
+            <input type="text" class="form-input-full" id="returneeName" placeholder="Enter name of person returning the tool" required>
             <label class="field-label">Condition</label>
             <select class="form-input-full" id="returnCondition">
               <option value="good">Good — No Issues</option>

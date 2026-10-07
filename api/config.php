@@ -26,3 +26,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
+
+// ── Shared validation helpers ───────────────────────────────────
+// School's official student ID format. Only enforced for type=Student
+// — Faculty/Staff use the school's HR numbering (not specified here)
+// and Guest is by definition someone outside that system, so neither
+// is forced through the student ID shape.
+//
+// Matches the client-side check already enforced in app.js's
+// saveBorrower(): /^\d{8,10}$/ — "8 to 10 digits, numbers only".
+// If your school's actual ID format is different (e.g. the hyphenated
+// "2024-00123" mentioned in borrowers.php's comment), update BOTH this
+// regex and the one in app.js so client and server agree.
+    

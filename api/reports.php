@@ -75,13 +75,22 @@ $reportDefs = [
     ],
     'transactions' => [
         'filename' => 'transactions',
-        'columns'  => ['TXN ID', 'Type', 'Tool Code', 'Tool Name', 'Borrower', 'Status', 'Condition', 'Notes', 'Due Date', 'Returned At', 'Created At'],
+        // "Borrowed At": for a borrow row this is just its own
+        // created_at; for a return row it's the ORIGINAL borrow's
+        // created_at, found via the borrow_txn_id link set when the
+        // return was recorded (see transactions.php). Falls back to
+        // the row's own created_at if that link isn't set (e.g. a
+        // return recorded before this link existed and not covered
+        // by the backfill migration).
+        'columns'  => ['TXN ID', 'Type', 'Tool Code', 'Tool Name', 'Borrower', 'Status', 'Condition', 'Notes', 'Due Date', 'Returned At', 'Borrowed At'],
         'sql'      => "SELECT t.txn_id, t.type, tl.code AS tool_code, tl.name AS tool_name,
                                b.full_name AS borrower, t.status, t.condition, t.notes,
-                               t.due_date, t.returned_at, t.created_at
+                               t.due_date, t.returned_at,
+                               COALESCE(bt.created_at, t.created_at) AS borrowed_at
                         FROM transactions t
                         LEFT JOIN tools tl ON tl.id = t.tool_id
                         LEFT JOIN borrowers b ON b.id = t.borrower_id
+                        LEFT JOIN transactions bt ON bt.id = t.borrow_txn_id
                         ORDER BY t.created_at DESC",
     ],
     'borrowers' => [

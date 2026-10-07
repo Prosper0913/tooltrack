@@ -961,149 +961,50 @@ function setScanStatus(statusId,textId,text,type){
   if(textId)document.getElementById(textId).textContent=text;
 }
 
-/* ── Camera policy ──────────────────────────────────────────
-   • PHONE / TABLET : rear ("environment") camera ONLY. The front camera
-                      is never used and the camera dropdown is hidden.
-   • PC / LAPTOP    : the built-in webcam is NOT used. The camera only
-                      works when an external USB scanner-camera is
-                      plugged in (it shows up as an extra video device).
-   Tune the two patterns below if your scanner/webcam has an unusual
-   name — the detected labels are printed in the browser console
-   ("[camera] detected devices").                                   */
-const CAMERA_POLICY = {
-  // Desktop: labels treated as built-in / virtual cameras → ignored
-  builtIn: /integrated|built-?in|internal|facetime|isight|truevision|macbook|imac|surface|ir camera|infrared|windows hello|laptop|virtual|obs|snap camera|manycam|droidcam|epoccam|iriun|camo/i,
-  // Desktop: labels of known scanner cameras → always allowed
-  scanner: /scan|barcode|qr|symbol|zebra|honeywell|datalogic|newland|netum|eyoyo|opticon|unitech|mindeo/i,
-  // Mobile: label hints when facingMode is not supported
-  rear: /back|rear|environment/i,
-  front: /front|user|selfie|facetime/i
-};
-
-function isMobileDevice(){
-  if(navigator.userAgentData && navigator.userAgentData.mobile===true) return true;
-  const ua=navigator.userAgent||'';
-  if(/Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(ua)) return true;
-  // iPadOS 13+ pretends to be a Mac; touch support gives it away
-  return /Macintosh/i.test(ua) && navigator.maxTouchPoints>1;
-}
-
-function isExternalScannerCamera(dev){
-  const label=dev.label||'';
-  if(CAMERA_POLICY.scanner.test(label)) return true;
-  return !CAMERA_POLICY.builtIn.test(label);
-}
-
-function setCameraFieldVisible(selectId,show){
-  const field=document.getElementById(selectId.replace('Select','Field'));
-  if(field) field.style.display=show?'block':'none';
-}
-
-function resetCameraSelects(){
-  ['borrowCameraSelect','returnCameraSelect'].forEach(id=>{
-    const sel=document.getElementById(id); if(!sel) return;
-    sel.innerHTML='<option value="">Press \'Camera\' to enable</option>';
-    setCameraFieldVisible(id,false);
-  });
-}
-
-function cameraErrorText(err){
-  return String((err && (err.message||err.name)) || err || 'Camera access failed.');
-}
-
-/* Desktop only: list cameras, drop built-in webcams, fill the dropdown. */
 function loadCameras(selectId){
   return Html5Qrcode.getCameras().then(devices=>{
-    console.info('[camera] detected devices:', (devices||[]).map(d=>d.label||d.id));
     const sel=document.getElementById(selectId);
     sel.innerHTML='';
-    const allowed=(devices||[]).filter(isExternalScannerCamera);
-    if(!allowed.length){
-      sel.innerHTML='<option value="">No USB scanner camera detected</option>';
-      setCameraFieldVisible(selectId,false);
-      return allowed;
-    }
-    allowed.forEach((d,i)=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.label||`Scanner camera ${i+1}`;sel.appendChild(o);});
-    setCameraFieldVisible(selectId,allowed.length>1);
-    return allowed;
+    if(!devices||!devices.length){sel.innerHTML='<option value="">No cameras detected</option>';return devices;}
+    devices.forEach((d,i)=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.label||`Camera ${i+1}`;sel.appendChild(o);});
+    return devices;
   }).catch(err=>{
-    // Surface the REAL reason — on a desktop this is very often the page
-    // being loaded over http:// from something other than localhost
-    // (camera access needs https:// or http://localhost).
+    // Surface the REAL reason instead of a generic "denied" — on a
+    // desktop this is very often not a permission denial at all, but
+    // the page being loaded over http:// from something other than
+    // localhost (camera access requires a secure context: https://
+    // or http://localhost, per browser policy — not something this
+    // app's code can override).
     const msg=String(err && (err.message||err)) || 'Unknown error';
-    const hint = window.isSecureContext ? msg : `Camera blocked: this page must be opened via https:// or http://localhost — "${location.hostname}" doesn't qualify for camera access in most browsers.`;
-    document.getElementById(selectId).innerHTML=`<option value="">${window.isSecureContext?'Camera error: '+msg:'Not a secure context'}</option>`;
+    const isSecureCtx = window.isSecureContext;
+    const hint = isSecureCtx ? msg : `Camera blocked: this page must be opened via https:// or http://localhost — "${location.hostname}" doesn't qualify for camera access in most browsers.`;
+    document.getElementById(selectId).innerHTML=`<option value="">${isSecureCtx?'Camera error: '+msg:'Not a secure context'}</option>`;
     console.error('Camera enumeration failed:', hint);
     throw new Error(hint);
   });
 }
 
-/* Mobile fallback: find the rear camera by label (never the front one). */
-async function findRearCameraId(){
-  const devices=await Html5Qrcode.getCameras();
-  const rear=(devices||[]).find(d=>CAMERA_POLICY.rear.test(d.label||'') && !CAMERA_POLICY.front.test(d.label||''));
-  if(!rear) throw new Error('No rear camera found on this device.');
-  return rear.id;
-}
-
-/* Starts the camera according to the policy above.
-   beforeStart() is called once a camera source is known (used to show the viewport). */
-async function openCamera(qr,selectId,onDecode,beforeStart){
-  if(!window.isSecureContext || !navigator.mediaDevices){
-    throw new Error('Camera blocked: this page must be opened via https:// or http://localhost.');
-  }
-  const scanCfg={fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};}};
-  const onFail=()=>{};
-
-  if(isMobileDevice()){
-    setCameraFieldVisible(selectId,false);          // no camera choice on phones
-    if(beforeStart) beforeStart();
-    try{
-      // "exact" = rear camera or fail — it will never fall back to the front cam
-      await qr.start({facingMode:{exact:'environment'}},scanCfg,onDecode,onFail);
-    }catch(err){
-      if(err && (err.name==='NotAllowedError' || /permission|denied|notallowed/i.test(String(err)))) throw err;
-      const id=await findRearCameraId();            // some browsers reject facingMode
-      await qr.start(id,scanCfg,onDecode,onFail);
-    }
-    return;
-  }
-
-  // PC / laptop → only an external USB scanner camera is accepted
-  const sel=document.getElementById(selectId);
-  if(!sel.value){
-    const allowed=await loadCameras(selectId);
-    if(!allowed.length){
-      throw new Error('No USB scanner camera detected. Plug in the scanner and press Camera again (the laptop webcam is disabled).');
-    }
-  }
-  if(beforeStart) beforeStart();
-  try{
-    await qr.start(sel.value,scanCfg,onDecode,onFail);
-  }catch(err){
-    sel.innerHTML='<option value="">Press \'Camera\' to enable</option>'; // force re-detect next time
-    throw err;
-  }
-}
-
 async function startBorrowScanner(){
   if(borrowScanning)return;
-  const S=(t,ty)=>setScanStatus('borrowScanStatus','borrowScanStatusText',t,ty);
-  S('Requesting camera access…','scanning');
-  try{
-    await openCamera(borrowQr,'borrowCameraSelect',
-      decoded=>{document.getElementById('borrowToolId').value=decoded;document.getElementById('clearBorrowToolBtn').classList.add('visible');matchBorrowToolCode(decoded);setScanStatus('borrowScanStatus','borrowScanStatusText','✓ Scanned: '+decoded,'success');stopBorrowScanner();},
-      ()=>{
-        document.getElementById('borrowReader').style.display='block';
-        document.getElementById('borrowStartBtn').style.display='none';
-        document.getElementById('borrowStopBtn').style.display='flex';
-      });
-    borrowScanning=true;
-    S('Scanning — point camera at QR code…','scanning');
-  }catch(err){
-    S(cameraErrorText(err),'error');
-    resetBorrowScannerUI();
+  const sel=document.getElementById('borrowCameraSelect');
+  if(!sel.value){
+    // Cameras haven't been enumerated yet — this is the FIRST point
+    // the browser's camera permission prompt appears, deliberately
+    // deferred until the user actually presses this button rather
+    // than on page load.
+    setScanStatus('borrowScanStatus','borrowScanStatusText','Requesting camera access…','scanning');
+    try{ await loadCameras('borrowCameraSelect'); }
+    catch(err){ setScanStatus('borrowScanStatus','borrowScanStatusText',err.message||'Camera access failed.','error'); return; }
   }
+  const camId=sel.value;
+  if(!camId){setScanStatus('borrowScanStatus','borrowScanStatusText','No camera available.','error');return;}
+  document.getElementById('borrowReader').style.display='block';
+  document.getElementById('borrowStartBtn').style.display='none';
+  document.getElementById('borrowStopBtn').style.display='flex';
+  setScanStatus('borrowScanStatus','borrowScanStatusText','Scanning — point camera at QR code…','scanning');
+  borrowQr.start(camId,{fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};}},
+    decoded=>{document.getElementById('borrowToolId').value=decoded;document.getElementById('clearBorrowToolBtn').classList.add('visible');matchBorrowToolCode(decoded);setScanStatus('borrowScanStatus','borrowScanStatusText','✓ Scanned: '+decoded,'success');stopBorrowScanner();},()=>{}
+  ).then(()=>borrowScanning=true).catch(err=>{setScanStatus('borrowScanStatus','borrowScanStatusText','Cannot start: '+err,'error');resetBorrowScannerUI();});
 }
 function stopBorrowScanner(){if(!borrowScanning){resetBorrowScannerUI();return;}borrowQr.stop().then(()=>{borrowScanning=false;resetBorrowScannerUI();}).catch(()=>{borrowScanning=false;resetBorrowScannerUI();});}
 function resetBorrowScannerUI(){document.getElementById('borrowReader').style.display='none';document.getElementById('borrowStartBtn').style.display='flex';document.getElementById('borrowStopBtn').style.display='none';}
@@ -1132,24 +1033,25 @@ function onBorrowerNameInput(){
   }
 }
 
-async function startReturnScanner(){
+function startReturnScanner(){
   if(returnScanning)return;
-  const S=(t,ty)=>setScanStatus('returnScanStatus','returnScanStatusText',t,ty);
-  S('Requesting camera access…','scanning');
-  try{
-    await openCamera(returnQr,'returnCameraSelect',
-      decoded=>{document.getElementById('returnToolId').value=decoded;document.getElementById('clearReturnToolBtn').classList.add('visible');matchReturnToolCode(decoded);setScanStatus('returnScanStatus','returnScanStatusText','✓ Scanned: '+decoded,'success');stopReturnScanner();},
-      ()=>{
-        document.getElementById('returnReader').style.display='block';
-        document.getElementById('returnStartBtn').style.display='none';
-        document.getElementById('returnStopBtn').style.display='flex';
-      });
-    returnScanning=true;
-    S('Scanning…','scanning');
-  }catch(err){
-    S(cameraErrorText(err),'error');
-    resetReturnScannerUI();
+  const sel=document.getElementById('returnCameraSelect');
+  const go=(camId)=>{
+    if(!camId){setScanStatus('returnScanStatus','returnScanStatusText','No camera available.','error');return;}
+    document.getElementById('returnReader').style.display='block';
+    document.getElementById('returnStartBtn').style.display='none';
+    document.getElementById('returnStopBtn').style.display='flex';
+    setScanStatus('returnScanStatus','returnScanStatusText','Scanning…','scanning');
+    returnQr.start(camId,{fps:15,qrbox:(w,h)=>{const s=Math.min(w,h)*.7;return{width:Math.floor(s),height:Math.floor(s)};}},
+      decoded=>{document.getElementById('returnToolId').value=decoded;document.getElementById('clearReturnToolBtn').classList.add('visible');matchReturnToolCode(decoded);setScanStatus('returnScanStatus','returnScanStatusText','✓ Scanned: '+decoded,'success');stopReturnScanner();},()=>{}
+    ).then(()=>returnScanning=true).catch(err=>{setScanStatus('returnScanStatus','returnScanStatusText','Cannot start: '+err,'error');resetReturnScannerUI();});
+  };
+  if(!sel.value){
+    setScanStatus('returnScanStatus','returnScanStatusText','Requesting camera access…','scanning');
+    loadCameras('returnCameraSelect').then(()=>go(sel.value)).catch(err=>setScanStatus('returnScanStatus','returnScanStatusText',err.message||'Camera access failed.','error'));
+    return;
   }
+  go(sel.value);
 }
 function stopReturnScanner(){if(!returnScanning){resetReturnScannerUI();return;}returnQr.stop().then(()=>{returnScanning=false;resetReturnScannerUI();}).catch(()=>{returnScanning=false;resetReturnScannerUI();});}
 function resetReturnScannerUI(){document.getElementById('returnReader').style.display='none';document.getElementById('returnStartBtn').style.display='flex';document.getElementById('returnStopBtn').style.display='none';}
@@ -1836,13 +1738,8 @@ window.addEventListener('load',()=>{
   // triggers the browser's camera permission prompt, and we only want
   // that happening when the user actually presses "Camera" (see
   // startBorrowScanner/startReturnScanner), not on every page load.
-  resetCameraSelects();
-  // Plugging / unplugging a USB scanner → force a fresh camera scan next time
-  if(navigator.mediaDevices && navigator.mediaDevices.addEventListener){
-    navigator.mediaDevices.addEventListener('devicechange',()=>{
-      if(!isMobileDevice() && !borrowScanning && !returnScanning) resetCameraSelects();
-    });
-  }
+  document.getElementById('borrowCameraSelect').innerHTML='<option value="">Press \'Camera\' to enable</option>';
+  document.getElementById('returnCameraSelect').innerHTML='<option value="">Press \'Camera\' to enable</option>';
   const due=new Date(Date.now()+7*24*60*60*1000);
   document.getElementById('borrowDueDate').valueAsDate=due;
   loadCurrentUser();

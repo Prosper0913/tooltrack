@@ -310,7 +310,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
       </div>
     </div>
     <div class="header-right">
-      <div class="search-box"><i class="fas fa-search"></i><input type="text" id="globalSearch" name="tool_search_q" placeholder="Search for tools" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true"></div>
+      <div class="search-box"><i class="fas fa-search"></i><input type="text" id="globalSearch" placeholder="Search for tools"></div>
       <div style="display:flex;gap:8px;position:relative">
         <button class="header-btn" id="notifBtn" onclick="toggleNotifPanel()"><i class="fas fa-bell"></i><span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;min-width:16px;height:16px;padding:0 4px;background:var(--danger,#ef4444);color:#fff;border-radius:9px;border:2px solid #fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;line-height:1"></span></button>
         <button class="header-btn" onclick="openSettingsModal()"><i class="fas fa-cog"></i></button>
@@ -453,10 +453,8 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
         <div class="br-card">
           <div class="br-card-header"><div class="br-card-header-icon borrow"><i class="fas fa-hand-holding"></i></div><h3>Borrow Tool</h3></div>
           <div class="br-card-body">
-            <div id="borrowCameraField" style="display:none">
-              <label class="field-label"><i class="fas fa-video"></i> Camera Device</label>
-              <select class="form-input-full" id="borrowCameraSelect"><option value="">Press "Camera" to enable</option></select>
-            </div>
+            <label class="field-label"><i class="fas fa-video"></i> Camera Device</label>
+            <select class="form-input-full" id="borrowCameraSelect"><option value="">Press "Camera" to enable</option></select>
 
             <div class="scanner-zone">
               <div class="scanner-zone-label"><i class="fas fa-qrcode"></i> QR Code Scanner</div>
@@ -555,10 +553,8 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
         <div class="br-card">
           <div class="br-card-header"><div class="br-card-header-icon return"><i class="fas fa-undo"></i></div><h3>Return Tool</h3></div>
           <div class="br-card-body">
-            <div id="returnCameraField" style="display:none">
-              <label class="field-label"><i class="fas fa-video"></i> Camera Device</label>
-              <select class="form-input-full" id="returnCameraSelect"><option value="">Press "Camera" to enable</option></select>
-            </div>
+            <label class="field-label"><i class="fas fa-video"></i> Camera Device</label>
+            <select class="form-input-full" id="returnCameraSelect"><option value="">Press "Camera" to enable</option></select>
 
             <div class="scanner-zone">
               <div class="scanner-zone-label"><i class="fas fa-qrcode"></i> QR Code Scanner</div>
