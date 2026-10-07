@@ -3,4 +3,4 @@ cat > .gitignore << 'EOF'
 *.sql.bak
 .DS_Store
 Thumbs.db
-EOF
+EOF_incoming/
