@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 21, 2026 at 07:40 PM
+-- Generation Time: Sep 24, 2026 at 07:14 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,31 @@ SET time_zone = "+00:00";
 --
 -- Database: `tooltrack_db`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `audit_log`
+--
+
+CREATE TABLE `audit_log` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL COMMENT 'FK -> users.id; NULL for a failed login (no known user) or if the user was later deleted',
+  `username_snapshot` varchar(100) DEFAULT NULL COMMENT 'Kept even if the user account is later deleted',
+  `role_snapshot` varchar(20) DEFAULT NULL,
+  `action` varchar(40) NOT NULL COMMENT 'login | login_failed | logout | borrow | return | tool_create | tool_edit | tool_retire | tool_reactivate | borrower_create | borrower_edit | borrower_deactivate | borrower_reactivate | user_create | user_delete | password_reset | password_change | replacement_request | replacement_resolved | cms_sync',
+  `description` varchar(500) NOT NULL COMMENT 'Human-readable summary, e.g. "Borrowed 2x Spoon (SP-101) for Juan Dela Cruz"',
+  `ip_address` varchar(45) DEFAULT NULL COMMENT 'IPv4 or IPv6',
+  `user_agent` varchar(255) DEFAULT NULL COMMENT 'Raw browser User-Agent string',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `audit_log`
+--
+
+INSERT INTO `audit_log` (`id`, `user_id`, `username_snapshot`, `role_snapshot`, `action`, `description`, `ip_address`, `user_agent`, `created_at`) VALUES
+(1, 1, 'NIORRITOS', 'Admin', 'login', 'Logged in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36', '2026-09-24 19:12:28');
 
 -- --------------------------------------------------------
 
@@ -57,7 +82,7 @@ INSERT INTO `borrowers` (`id`, `full_name`, `id_number`, `type`, `email`, `phone
 (51, 'Precious', '20226373', 'Guest', '', '', 1, 1, '2026-08-14 12:05:11', '2026-08-14 12:05:11', 1, NULL, NULL),
 (54, 'John Gil Igama. Tolibas', '25', 'Student', NULL, NULL, 1, 1, '2026-08-14 14:56:02', '2026-08-14 22:31:40', 1, '2026-08-14 22:31:40', 'cms_push'),
 (56, 'Mary Rose Abrig. Sugapa', '24', 'Student', NULL, NULL, 0, 0, '2026-08-14 22:21:21', '2026-08-14 22:31:40', 1, '2026-08-14 22:31:40', 'cms_push'),
-(60, 'Neil Vincent Tanto. Marquez', '16', 'Student', NULL, NULL, 0, 0, '2026-08-14 22:35:20', '2026-08-14 22:37:48', 1, '2026-08-14 22:37:48', 'cms_push'),
+(60, 'Neil Vincent Tanto. Marquez', '16', 'Student', NULL, NULL, 0, 1, '2026-08-14 22:35:20', '2026-09-23 13:15:01', 1, '2026-08-14 22:37:48', 'cms_push'),
 (63, 'Robin Padilla', '8080', 'Student', NULL, NULL, 0, 0, '2026-08-16 13:28:10', '2026-08-16 13:37:15', 1, '2026-08-16 13:37:15', 'cms_push'),
 (81, 'Yi Sun-shin', '0101', 'Student', '', '', 0, 1, '2026-08-16 13:56:48', '2026-09-18 19:11:45', 1, NULL, NULL),
 (82, 'Gagam Boy', '000000', 'Student', NULL, NULL, 0, 0, '2026-08-22 20:44:25', '2026-08-22 21:11:10', 1, '2026-08-22 21:11:10', 'cms_push'),
@@ -121,6 +146,14 @@ CREATE TABLE `replacement_requests` (
   `resolved_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `replacement_requests`
+--
+
+INSERT INTO `replacement_requests` (`id`, `tool_id`, `tool_name_snapshot`, `reason`, `quantity_needed`, `notes`, `status`, `requested_by`, `resolved_by`, `resolution_notes`, `created_at`, `resolved_at`) VALUES
+(1, 1, 'spoon', 'damaged', 1, '', 'pending', 2, NULL, NULL, '2026-09-21 19:48:05', NULL),
+(2, 1, 'spoon', 'damaged', 1, '', 'pending', 1, NULL, NULL, '2026-09-23 11:42:27', NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -148,7 +181,7 @@ CREATE TABLE `tools` (
 INSERT INTO `tools` (`id`, `name`, `code`, `category`, `quantity`, `available`, `min_stock`, `is_active`, `description`, `created_at`, `updated_at`) VALUES
 (1, 'spoon', 'SP-101', 'Dinnerware', 12, 8, 2, 1, '', '2026-07-20 22:22:43', '2026-09-18 19:37:24'),
 (2, 'frying pan', 'FP-101', 'Cookware', 21, 0, 10, 1, '', '2026-08-14 12:03:35', '2026-09-21 19:30:20'),
-(3, 'fork', 'F001-ORK', 'Dinnerware', 50, 49, 10, 1, '', '2026-09-12 21:32:22', '2026-09-20 16:25:45'),
+(3, 'fork', 'F001-ORK', 'Dinnerware', 50, 49, 10, 1, '', '2026-09-12 21:32:22', '2026-09-23 13:15:01'),
 (4, 'Chef\'s Knife', 'CK-01', 'Cutleries', 5, 5, 5, 1, '', '2026-09-18 19:30:01', '2026-09-20 17:23:59'),
 (5, 'Wine Glass', 'WG-09', 'Glassware', 25, 25, 5, 1, '', '2026-09-18 19:34:11', '2026-09-18 19:37:30');
 
@@ -199,7 +232,9 @@ INSERT INTO `transactions` (`id`, `txn_id`, `type`, `tool_id`, `borrower_id`, `s
 (16, 'TXN-2026-1A1EC7', 'return', 4, 13, 'returned', 0, 'good', '', NULL, NULL, '2026-09-20 16:49:05', '2026-09-20 16:49:05', 3, 0),
 (17, 'TXN-2026-76BFB9', 'return', 4, 13, 'returned', 0, 'good', '', NULL, NULL, '2026-09-20 16:49:27', '2026-09-20 16:49:27', 1, 0),
 (18, 'TXN-2026-E2CC4C', 'return', 2, 13, 'returned', 0, 'damaged', '', NULL, NULL, '2026-09-20 16:51:42', '2026-09-20 16:51:42', 1, 0),
-(19, 'TXN-2026-F83DC6', 'return', 4, 13, 'returned', 0, 'good', '', NULL, NULL, '2026-09-20 17:23:59', '2026-09-20 17:23:59', 1, 0);
+(19, 'TXN-2026-F83DC6', 'return', 4, 13, 'returned', 0, 'good', '', NULL, NULL, '2026-09-20 17:23:59', '2026-09-20 17:23:59', 1, 0),
+(20, 'TXN-2026-89A966', 'borrow', 3, 60, 'returned', 0, NULL, '', NULL, '2026-10-01', '2026-09-23 13:15:01', '2026-09-23 13:13:28', 5, 5),
+(21, 'TXN-2026-59C245', 'return', 3, 60, 'returned', 0, 'good', '', 'Neil Vincent Marquez', NULL, '2026-09-23 13:15:01', '2026-09-23 13:15:01', 5, 0);
 
 -- --------------------------------------------------------
 
@@ -229,6 +264,15 @@ INSERT INTO `users` (`id`, `name`, `username`, `email`, `password`, `role`, `cre
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `audit_log`
+--
+ALTER TABLE `audit_log`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_audit_user` (`user_id`),
+  ADD KEY `idx_audit_action` (`action`),
+  ADD KEY `idx_audit_created` (`created_at`);
 
 --
 -- Indexes for table `borrowers`
@@ -290,6 +334,12 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT for table `audit_log`
+--
+ALTER TABLE `audit_log`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `borrowers`
 --
 ALTER TABLE `borrowers`
@@ -305,7 +355,7 @@ ALTER TABLE `borrower_enrollments`
 -- AUTO_INCREMENT for table `replacement_requests`
 --
 ALTER TABLE `replacement_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `tools`
@@ -317,7 +367,7 @@ ALTER TABLE `tools`
 -- AUTO_INCREMENT for table `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -328,6 +378,12 @@ ALTER TABLE `users`
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `audit_log`
+--
+ALTER TABLE `audit_log`
+  ADD CONSTRAINT `fk_audit_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `borrower_enrollments`

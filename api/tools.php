@@ -117,6 +117,8 @@ if ($method === 'POST') {
     $tool = $stmt->fetch();
     $tool['status'] = toolStatus($tool);
 
+    logAudit('tool_create', "Added tool $name ($code), qty $quantity");
+
     ok($tool, 201);
 }
 
@@ -163,6 +165,8 @@ if ($method === 'PUT') {
     $tool = $stmt->fetch();
     $tool['status'] = toolStatus($tool);
 
+    logAudit('tool_edit', "Edited tool $name ($code)");
+
     ok($tool);
 }
 
@@ -181,9 +185,10 @@ if ($method === 'PATCH') {
     }
     $isActive = $b['is_active'] ? 1 : 0;
 
-    $existing = $db->prepare('SELECT id FROM tools WHERE id = ?');
+    $existing = $db->prepare('SELECT id, name, code FROM tools WHERE id = ?');
     $existing->execute([$id]);
-    if (!$existing->fetch()) fail('Tool not found.', 404);
+    $existingRow = $existing->fetch();
+    if (!$existingRow) fail('Tool not found.', 404);
 
     $stmt = $db->prepare('UPDATE tools SET is_active = ? WHERE id = ?');
     $stmt->execute([$isActive, $id]);
@@ -192,6 +197,7 @@ if ($method === 'PATCH') {
     $stmt->execute([$id]);
     $tool = $stmt->fetch();
     $tool['status'] = toolStatus($tool);
+    logAudit($isActive ? 'tool_reactivate' : 'tool_retire', ($isActive ? 'Reactivated' : 'Retired') . " tool {$existingRow['name']} ({$existingRow['code']})");
     ok($tool);
 }
 
