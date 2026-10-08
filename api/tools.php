@@ -54,8 +54,16 @@ if ($method === 'GET') {
         $params[] = $search;
         $params[] = $search;
     }
+    if (!empty($_GET['date_from'])) {
+        $where[]  = 'DATE(created_at) >= ?';
+        $params[] = $_GET['date_from'];
+    }
+    if (!empty($_GET['date_to'])) {
+        $where[]  = 'DATE(created_at) <= ?';
+        $params[] = $_GET['date_to'];
+    }
 
-    $sql    = 'SELECT * FROM tools WHERE ' . implode(' AND ', $where);
+    $sql    = 'SELECT * FROM tools WHERE ' . implode(' AND ', $where) . ' ORDER BY created_at DESC';
     $stmt   = $db->prepare($sql);
     $stmt->execute($params);
     $tools  = $stmt->fetchAll();
@@ -85,25 +93,56 @@ if ($method === 'GET') {
     exit;
 }
 
+// Short, memorable, guaranteed-unique code generated from the tool's
+// name — e.g. "Spoon" -> "SP-101", "Frying Pan" -> "FP-101". Loops on
+// the sequence number only (never the letters) until it finds one
+// that doesn't collide, so it's always unique even if "SP-101" etc.
+// already exists from an earlier tool with a similar name.
+function generateToolCode(PDO $db, string $name): string {
+    $words   = preg_split('/\s+/', trim($name)) ?: [];
+    $letters = '';
+    foreach ($words as $w) {
+        $clean = preg_replace('/[^A-Za-z]/', '', $w);
+        if ($clean !== '') $letters .= strtoupper($clean[0]);
+        if (strlen($letters) >= 2) break;
+    }
+    if (strlen($letters) < 2) {
+        $clean   = preg_replace('/[^A-Za-z]/', '', $words[0] ?? '');
+        $letters = strtoupper(substr($clean !== '' ? $clean : 'TL', 0, 2));
+        if (strlen($letters) < 2) $letters = str_pad($letters, 2, 'X');
+    }
+
+    $n = 101;
+    do {
+        $code  = "$letters-$n";
+        $check = $db->prepare('SELECT id FROM tools WHERE code = ?');
+        $check->execute([$code]);
+        $taken = (bool)$check->fetch();
+        $n++;
+    } while ($taken);
+
+    return $code;
+}
+
 // ── POST (Create) ─────────────────────────────────────────────
 if ($method === 'POST') {
     $b = body();
 
     $name        = trim($b['name']        ?? '');
-    $code        = trim($b['code']        ?? '');
     $category    = trim($b['category']    ?? '');
     $quantity    = (int)($b['quantity']   ?? 0);
     $min_stock   = (int)($b['min_stock']  ?? 1);
     $description = trim($b['description'] ?? '');
 
-    if (!$name || !$code || !$category || $quantity < 1 || $min_stock < 1) {
+    if (!$name || !$category || $quantity < 1 || $min_stock < 1) {
         fail('All required fields must be filled.');
     }
 
-    // Check duplicate code
-    $check = $db->prepare('SELECT id FROM tools WHERE code = ?');
-    $check->execute([$code]);
-    if ($check->fetch()) fail("Tool code '$code' already exists.");
+    // The code is always system-generated, never client-supplied —
+    // short and derived from the name so it's easy to remember, and
+    // guaranteed collision-free since generateToolCode() checks the
+    // DB itself.
+    $code = generateToolCode($db, $name);
 
     $stmt = $db->prepare('
         INSERT INTO tools (name, code, category, quantity, available, min_stock, description)

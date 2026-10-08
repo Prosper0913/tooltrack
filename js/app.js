@@ -358,21 +358,23 @@ async function loadTools(){
   const status=document.getElementById('toolStatusFilter').value;
   const category=document.getElementById('toolCategoryFilter').value;
   const search=document.getElementById('toolSearchFilter').value;
-  const params=new URLSearchParams({page:toolsCurrentPage,per_page:TOOLS_PER_PAGE,status,category,search});
-  document.getElementById('toolsTableBody').innerHTML='<tr class="empty-row"><td colspan="8"><span class="spinner dark"></span> Loading…</td></tr>';
+  const date_from=document.getElementById('toolDateFrom').value;
+  const date_to=document.getElementById('toolDateTo').value;
+  const params=new URLSearchParams({page:toolsCurrentPage,per_page:TOOLS_PER_PAGE,status,category,search,date_from,date_to});
+  document.getElementById('toolsTableBody').innerHTML='<tr class="empty-row"><td colspan="9"><span class="spinner dark"></span> Loading…</td></tr>';
   try{
     const res=await apiFetch(`${API}/tools.php?${params}`);
     renderToolsTable(res.data||[]);
     const totalPages=Math.ceil((res.total||0)/TOOLS_PER_PAGE);
     renderPagination('toolsPaginationInfo','toolsPaginationBtns',toolsCurrentPage,totalPages,TOOLS_PER_PAGE,res.total||0,p=>{toolsCurrentPage=p;loadTools();});
-  }catch(_){document.getElementById('toolsTableBody').innerHTML='<tr class="empty-row"><td colspan="8">Failed to load tools.</td></tr>';}
+  }catch(_){document.getElementById('toolsTableBody').innerHTML='<tr class="empty-row"><td colspan="9">Failed to load tools.</td></tr>';}
 }
 
 const CAT_ICONS={Utensils:'fa-solid fa-utensils',Cookware:'fas fa-fire-burner','Measuring Tools':'fas fa-ruler',Accessories:'fas fa-toolbox',Dinnerware:'fas fa-plate-wheat',Cutleries:'fas fa-utensils',Glassware:'fas fa-martini-glass'};
 
 function renderToolsTable(tools){
   const tbody=document.getElementById('toolsTableBody');
-  if(!tools.length){tbody.innerHTML='<tr class="empty-row"><td colspan="8">No tools found.</td></tr>';return;}
+  if(!tools.length){tbody.innerHTML='<tr class="empty-row"><td colspan="9">No tools found.</td></tr>';return;}
   const isAdmin = window.CURRENT_ROLE === 'Admin';
   tbody.innerHTML=tools.map(t=>`
     <tr${t.is_active==0?' style="opacity:.55"':''}>
@@ -386,6 +388,7 @@ function renderToolsTable(tools){
       <td data-label="Available">${t.available}</td>
       <td data-label="Min Stock">${t.min_stock}</td>
       <td data-label="Status"><span class="status-badge ${t.status}"><span class="status-dot"></span>${statusLabel(t.status)}</span></td>
+      <td data-label="Date Added">${t.created_at?new Date(t.created_at.replace(' ','T')).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'—'}</td>
       <td data-label="Actions"><div class="action-btns">
         <button class="action-btn view" title="QR Code" onclick="showQR('${t.code}','${t.name.replace(/'/g,"\\'")}')"><i class="fas fa-qrcode"></i></button>
         <button class="action-btn edit" title="Edit" onclick="editTool(${t.id})"><i class="fas fa-edit"></i></button>
@@ -425,6 +428,8 @@ function clearToolFilters(){
   document.getElementById('toolStatusFilter').value='';
   document.getElementById('toolCategoryFilter').value='';
   document.getElementById('toolSearchFilter').value='';
+  document.getElementById('toolDateFrom').value='';
+  document.getElementById('toolDateTo').value='';
   toolsCurrentPage=1; loadTools();
 }
 
@@ -566,13 +571,16 @@ async function saveTool(){
   const id=document.getElementById('editToolId').value;
   const body={
     name:document.getElementById('t_name').value.trim(),
-    code:document.getElementById('t_code').value.trim(),
     category:document.getElementById('t_category').value,
     quantity:parseInt(document.getElementById('t_qty').value)||0,
     min_stock:parseInt(document.getElementById('t_min').value)||0,
     description:document.getElementById('t_desc').value.trim()
   };
-  if(!body.name||!body.code||!body.category||!body.quantity||!body.min_stock){showToast('Please fill in all required fields.','error');return;}
+  // Code is system-generated on create; on edit it's carried along
+  // unchanged (the field is read-only) so the PUT endpoint — which
+  // still expects it — gets the same code back.
+  if(id) body.code=document.getElementById('t_code').value.trim();
+  if(!body.name||!body.category||!body.quantity||!body.min_stock){showToast('Please fill in all required fields.','error');return;}
   if(id) body.id=parseInt(id);
   setLoading('saveToolBtn',true);
   try{
@@ -800,6 +808,10 @@ function openAddBorrowerModal(){
   document.getElementById('saveBorrowerBtn').textContent='Add Borrower';
   ['b_name','b_idnum','b_email','b_phone'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('b_type').value='';
+  // Create mode: type is choosable and email is available.
+  document.getElementById('b_type').disabled=false;
+  document.getElementById('b_typeHint').style.display='none';
+  document.getElementById('b_emailGroup').style.display='';
   loadBorrowerEnrollmentOptions();
   document.getElementById('b_course').value='';
   document.getElementById('b_section').innerHTML='<option value="">Select section</option>';
@@ -822,8 +834,12 @@ async function editBorrower(id){
     document.getElementById('b_name').value=b.full_name||'';
     document.getElementById('b_idnum').value=b.id_number||'';
     document.getElementById('b_type').value=b.type||'';
-    document.getElementById('b_email').value=b.email||'';
+    document.getElementById('b_email').value=b.email||''; // kept (hidden) so saving doesn't wipe a stored email
     document.getElementById('b_phone').value=b.phone||'';
+    // Edit mode: email isn't editable and type is locked after creation.
+    document.getElementById('b_emailGroup').style.display='none';
+    document.getElementById('b_type').disabled=true;
+    document.getElementById('b_typeHint').style.display='block';
     await loadBorrowerEnrollmentOptions(manual?.course||b.course||'', manual?.cms_section_id||b.cms_section_id||'');
     openModal('borrowerModal');
   }catch(_){ }
@@ -842,7 +858,10 @@ async function saveBorrower(){
   const section=document.getElementById('b_section');
   const sectionId=parseInt(section.value||'0',10);
   const sectionName=section.options[section.selectedIndex]?.dataset?.name||section.options[section.selectedIndex]?.text||'';
-  if(!body.full_name||!body.id_number||!body.type){showToast('Please fill in all required fields.','error');return;}
+  // Type is only required when creating — on edit it's locked and the
+  // server uses the stored value (also covers Guests, who have no
+  // matching option in this dropdown).
+  if(!body.full_name||!body.id_number||(!id&&!body.type)){showToast('Please fill in all required fields.','error');return;}
   // Strip spaces/dashes before validating & storing — a real physical
   // ID usually has a dash on it (e.g. 2024-00123), but the stored
   // format is digits-only. Without this, typing the ID exactly as
@@ -850,7 +869,7 @@ async function saveBorrower(){
   body.id_number=body.id_number.replace(/[\s-]/g,'');
   if(body.type==='Student' && !/^\d{8,10}$/.test(body.id_number)){showToast('Student ID must be 8 to 10 digits (numbers only).','error');return;}
   if(!course||!sectionId){showToast('Please select a course and section.','error');return;}
-  if(id) body.id=parseInt(id,10);
+  if(id){ body.id=parseInt(id,10); delete body.type; } // type can't be changed after creation
   setLoading('saveBorrowerBtn',true);
   try{
     const borrowerRes=await apiFetch(`${API}/borrowers.php`,{method:id?'PUT':'POST',body:JSON.stringify(body)});
@@ -1668,11 +1687,31 @@ async function loadReports(){
     });
 
     if(categoryChart)categoryChart.destroy();
+    const catColors=[CHART_COLORS.purple,CHART_COLORS.violet,CHART_COLORS.purpleLight,CHART_COLORS.amber,CHART_COLORS.green,CHART_COLORS.red||'#ef4444',CHART_COLORS.blue||'#3b82f6'];
     categoryChart=new Chart(document.getElementById('categoryChart').getContext('2d'),{
       type:'doughnut',
-      data:{labels:cd.labels||[],datasets:[{data:cd.values||[],backgroundColor:[CHART_COLORS.purple,CHART_COLORS.violet,CHART_COLORS.purpleLight,CHART_COLORS.amber,CHART_COLORS.green],borderWidth:0,borderRadius:4}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,padding:20}}},cutout:'70%'}
+      data:{labels:cd.labels||[],datasets:[{data:cd.values||[],backgroundColor:catColors,borderWidth:0,borderRadius:4}]},
+      // Legend is replaced by the always-visible quantity list below
+      // (categoryLegend) — that's the actual fix for "shouldn't need
+      // to hover to see how many of each category," so Chart.js's
+      // own built-in legend (which only shows names, not counts) is
+      // turned off here instead of duplicating it.
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:true}},cutout:'70%'}
     });
+    // Always-visible quantity list — the actual answer to "I shouldn't
+    // need to hover to see how many of each category the inventory has."
+    const legendEl=document.getElementById('categoryLegend');
+    const labels=cd.labels||[], values=cd.values||[];
+    if(!labels.length){
+      legendEl.innerHTML='<span style="color:var(--gray-400);font-size:13px">No tools yet.</span>';
+    }else{
+      legendEl.innerHTML=labels.map((lab,i)=>
+        `<span style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray-700,#374151)">
+          <span style="width:10px;height:10px;border-radius:50%;background:${catColors[i%catColors.length]};display:inline-block"></span>
+          ${lab} <strong>${values[i]}</strong>
+        </span>`
+      ).join('');
+    }
   }catch(_){}
 }
 

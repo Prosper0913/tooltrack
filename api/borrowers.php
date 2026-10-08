@@ -220,23 +220,32 @@ if ($method === 'PUT') {
     $id        = (int)($b['id']        ?? 0);
     $full_name = trim($b['full_name'] ?? '');
     $id_number = trim($b['id_number'] ?? '');
-    $type      = trim($b['type']      ?? '');
-    $email     = trim($b['email']     ?? '');
     $phone     = trim($b['phone']     ?? '');
 
-
-    if (!$id || !$full_name || !$id_number || !$type) {
-        fail('ID, full name, ID number, and type are required.');
+    if (!$id || !$full_name || !$id_number) {
+        fail('ID, full name, and ID number are required.');
     }
-    if (!in_array($type, ['Student', 'Faculty', 'Staff', 'Guest'])) {
-        fail("Invalid type. Must be Student, Faculty, Guest or Staff.");
-    }
-    $id_number = validateIdNumber($type, $id_number);
 
-    // Check exists
-    $existing = $db->prepare('SELECT id FROM borrowers WHERE id = ?');
+    // Check exists — and load what's stored, since type is locked
+    // after creation and email isn't part of the edit form.
+    $existing = $db->prepare('SELECT id, type, email FROM borrowers WHERE id = ?');
     $existing->execute([$id]);
-    if (!$existing->fetch()) fail('Borrower not found.', 404);
+    $current = $existing->fetch();
+    if (!$current) fail('Borrower not found.', 404);
+
+    // Type can only be chosen when the borrower is created. Enforced
+    // here, not just by disabling the dropdown in the UI, so a direct
+    // API call can't change it either.
+    $type = $current['type'];
+    if (isset($b['type']) && trim($b['type']) !== '' && trim($b['type']) !== $type) {
+        fail('Borrower type cannot be changed after creation.');
+    }
+
+    // Email was removed from the edit form — keep whatever is stored
+    // unless a request explicitly supplies one.
+    $email = array_key_exists('email', $b) ? trim($b['email']) : ($current['email'] ?? '');
+
+    $id_number = validateIdNumber($type, $id_number);
 
     // Duplicate ID number (excluding self)
     $check = $db->prepare('SELECT id FROM borrowers WHERE id_number = ? AND id != ?');
@@ -245,10 +254,10 @@ if ($method === 'PUT') {
 
     $stmt = $db->prepare('
         UPDATE borrowers
-        SET full_name=?, id_number=?, type=?, email=?, phone=?
+        SET full_name=?, id_number=?, email=?, phone=?
         WHERE id=?
     ');
-    $stmt->execute([$full_name, $id_number, $type, $email, $phone, $id]);
+    $stmt->execute([$full_name, $id_number, $email, $phone, $id]);
 
     $stmt = $db->prepare('SELECT * FROM borrowers WHERE id = ?');
     $stmt->execute([$id]);

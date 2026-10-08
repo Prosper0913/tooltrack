@@ -385,7 +385,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
             </select>
           </div>
           <div class="filter-group"><span class="filter-label">Category:</span>
-            <select class="filter-select" id="toolCategoryFilter">
+            <select class="filter-select" id="toolCategoryFilter" onchange="applyToolFilters()">
               <option value="">All Categories</option>
               <option value="Utensils">Utensils</option>
               <option value="Cookware">Cookware</option>
@@ -396,14 +396,20 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
               <option value="Glassware">Glassware</option>
             </select>
           </div>
+          <div class="filter-group"><span class="filter-label">Added From:</span>
+            <input type="date" class="filter-input" id="toolDateFrom">
+          </div>
+          <div class="filter-group"><span class="filter-label">To:</span>
+            <input type="date" class="filter-input" id="toolDateTo">
+          </div>
           <div class="filter-group"><input type="text" class="filter-input" id="toolSearchFilter" placeholder="Search tools…"></div>
           <button class="filter-btn apply" onclick="applyToolFilters()">Apply</button>
           <button class="filter-btn clear" onclick="clearToolFilters()">Clear</button>
         </div>
         <div class="table-container">
           <table class="data-table">
-            <thead><tr><th>Tool Name</th><th>Tool Code</th><th>Category</th><th>Total Qty</th><th>Available</th><th>Min Stock</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody id="toolsTableBody"><tr class="empty-row"><td colspan="8"><span class="spinner dark"></span> Loading…</td></tr></tbody>
+            <thead><tr><th>Tool Name</th><th>Tool Code</th><th>Category</th><th>Total Qty</th><th>Available</th><th>Min Stock</th><th>Status</th><th>Date Added</th><th>Actions</th></tr></thead>
+            <tbody id="toolsTableBody"><tr class="empty-row"><td colspan="9"><span class="spinner dark"></span> Loading…</td></tr></tbody>
           </table>
         </div>
         <div class="pagination">
@@ -763,7 +769,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
       </div>
       <div class="content-grid" style="margin-top:32px">
         <div class="card"><div class="card-header"><h3 class="card-title">Monthly Statistics</h3></div><div class="card-body"><div class="chart-container"><canvas id="monthlyChart"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title">Category Distribution</h3></div><div class="card-body"><div class="chart-container"><canvas id="categoryChart"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">Category Distribution</h3></div><div class="card-body"><div class="chart-container"><canvas id="categoryChart"></canvas></div><div id="categoryLegend" style="display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;margin-top:14px"></div></div></div>
       </div>
     </section>
 
@@ -842,7 +848,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
     <div class="modal-body">
       <input type="hidden" id="editToolId">
       <div class="form-group"><label class="field-label">Tool Name *</label><input type="text" id="t_name" class="form-input-full" placeholder="Enter tool name"></div>
-      <div class="form-group"><label class="field-label">Tool Code *</label><input type="text" id="t_code" class="form-input-full" placeholder="e.g., TL-XXX-001"></div>
+      <div class="form-group"><label class="field-label">Tool Code</label><input type="text" id="t_code" class="form-input-full" placeholder="Auto-generated after saving" readonly style="background:var(--gray-50,#f9fafb);cursor:not-allowed"></div>
       <div class="form-group"><label class="field-label">Category *</label>
         <select id="t_category" class="form-input-full">
           <option value="">All Categories</option>
@@ -950,8 +956,9 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
           <option value="Faculty">Faculty</option>
           <option value="Staff">Staff</option>
         </select>
+        <p id="b_typeHint" style="display:none;font-size:11px;color:var(--gray-500);margin-top:4px">Type can only be set when a borrower is first created.</p>
       </div>
-      <div class="form-group"><label class="field-label">Email</label><input type="email" id="b_email" class="form-input-full" placeholder="email@school.edu"></div>
+      <div class="form-group" id="b_emailGroup"><label class="field-label">Email</label><input type="email" id="b_email" class="form-input-full" placeholder="email@school.edu"></div>
       <div class="form-group"><label class="field-label">Phone Number</label><input type="tel" id="b_phone" class="form-input-full" placeholder="Contact number"></div>
     </div>
     <div class="modal-footer">
