@@ -245,7 +245,10 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <!-- Third-party libraries -->
+<!-- Chart.js Core -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Chart.js Datalabels Plugin -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -281,7 +284,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
       <div class="nav-section-title">Account</div>
       <?php if ($isAdmin): ?>
       <a class="nav-item" data-page="users"><i class="fas fa-user-shield"></i><span>User Accounts</span></a>
-      <a class="nav-item" data-page="audit"><i class="fas fa-clipboard-list"></i><span>Audit Trail</span></a>
+      <!-- <a class="nav-item" data-page="audit"><i class="fas fa-clipboard-list"></i><span>Audit Trail</span></a> -->
       <?php endif; ?>
       <a class="nav-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
     </div>
@@ -408,7 +411,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
         </div>
         <div class="table-container">
           <table class="data-table">
-            <thead><tr><th>Tool Name</th><th>Tool Code</th><th>Category</th><th>Total Qty</th><th>Available</th><th>Min Stock</th><th>Status</th><th>Date Added</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Tool Name</th><th>Tool Code</th><th>Category</th><th>Total Qty</th><th>Available</th><th>Min Stock</th><th>Price</th><th>Status</th><th>Date Added</th><th>Actions</th></tr></thead>
             <tbody id="toolsTableBody"><tr class="empty-row"><td colspan="9"><span class="spinner dark"></span> Loading…</td></tr></tbody>
           </table>
         </div>
@@ -438,7 +441,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
               <option value="Student">Student</option>
               <option value="Faculty">Faculty</option>
               <option value="Staff">Staff</option>
-              <option value="Guest">Guest</option>
+              <!-- <option value="Guest">Guest</option> -->
             </select>
           </div>
           <div class="filter-group"><input type="text" class="filter-input" id="borrowerSearchFilter" placeholder="Search by name or ID…"></div>
@@ -524,12 +527,22 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
             <input type="text" id="borrowerIdNumberInput" class="form-input-full" placeholder="eg.20222678">
           <p style="font-size:11px;color:var(--gray-500);margin-top:4px">Student Id must not be left empty</p>
           <select class="form-input-full" id="borrowerTypeInput">
-            <option value="">Not specified — will save as Guest</option>
+            <option value="">Not specified — will save as Student</option>
             <option value="Student">Student</option>
             <option value="Faculty">Faculty</option>
             <option value="Staff">Staff</option>
-            <option value="Guest">Guest</option>
+            <!-- <option value="Guest">Guest</option> -->
           </select>
+
+<label class="field-label">Course</label>
+<select class="form-input-full" id="borrowerCourseInput" onchange="onBorrowCourseChange()">
+  <option value="">None</option>
+</select>
+
+<label class="field-label">Section</label>
+<select class="form-input-full" id="borrowerSectionInput" disabled>
+  <option value="">Select section</option>
+</select>
 
             <label class="field-label">Due Date</label>
             <input type="date" class="form-input-full" id="borrowDueDate">
@@ -769,7 +782,17 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
       </div>
       <div class="content-grid" style="margin-top:32px">
         <div class="card"><div class="card-header"><h3 class="card-title">Monthly Statistics</h3></div><div class="card-body"><div class="chart-container"><canvas id="monthlyChart"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title">Category Distribution</h3></div><div class="card-body"><div class="chart-container"><canvas id="categoryChart"></canvas></div><div id="categoryLegend" style="display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;margin-top:14px"></div></div></div>
+        <!-- <div class="card"><div class="card-header"><h3 class="card-title">Category Distribution</h3></div><div class="card-body"><div class="chart-container"><canvas id="categoryChart"></canvas></div><div id="categoryLegend" style="display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;margin-top:14px"></div></div></div> -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Category Distribution</h3>
+  </div>
+  <div class="card-body" style="display: flex; justify-content: center;">
+    <div class="chart-container" style="position: relative; width: 100%; max-width: 560px; height: 340px;">
+      <canvas id="categoryChart"></canvas>
+    </div>
+  </div>
+</div>
       </div>
     </section>
 
@@ -793,7 +816,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
     </section>
     <?php endif; ?>
 
-    <?php if ($isAdmin): ?>
+     <?php if ($isAdmin): ?>
     <!-- ═══ AUDIT TRAIL ═══ -->
     <section class="page" id="auditPage">
       <div class="card">
@@ -831,7 +854,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
         </div>
       </div>
     </section>
-    <?php endif; ?>
+    <?php endif; ?> 
 
   </div><!-- /page-content -->
 </main>
@@ -863,6 +886,7 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
       </div>
       <div class="form-group"><label class="field-label">Total Quantity *</label><input type="number" id="t_qty" class="form-input-full" placeholder="Enter quantity" min="1"></div>
       <div class="form-group"><label class="field-label">Minimum Stock Level *</label><input type="number" id="t_min" class="form-input-full" placeholder="Alert when below this" min="1"></div>
+      <div class="form-group"><label class="field-label">Price per Piece (₱) *</label><input type="number" id="t_price" class="form-input-full" placeholder="0.00" min="0" step="0.01"></div>
       <div class="form-group"><label class="field-label">Description</label><input type="text" id="t_desc" class="form-input-full" placeholder="Brief description (optional)"></div>
     </div>
     <div class="modal-footer">
@@ -893,12 +917,20 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
         <input type="text" id="rr_customName" class="form-input-full" placeholder="Name it if it's no longer in the system">
       </div>
       <div class="form-group"><label class="field-label">Reason *</label>
-        <select id="rr_reason" class="form-input-full">
+        <select id="rr_reason" class="form-input-full" onchange="onReplacementReasonChange()">
           <option value="damaged">Damaged</option>
           <option value="lost">Lost</option>
           <option value="worn_out">Worn Out</option>
           <option value="other">Other</option>
         </select>
+      </div>
+
+      <div class="form-group" id="rr_responsibleGroup">
+        <label class="field-label">Responsible Borrower</label>
+        <select id="rr_responsible" class="form-input-full">
+          <option value="">Unknown / not applicable</option>
+        </select>
+        <p style="font-size:11px;color:var(--gray-500);margin-top:4px">Who damaged or lost it? Leave blank if unknown.</p>
       </div>
       <div class="form-group"><label class="field-label">Quantity Needed *</label><input type="number" id="rr_qty" class="form-input-full" min="1" value="1"></div>
       <div class="form-group"><label class="field-label">Notes</label><input type="text" id="rr_notes" class="form-input-full" placeholder="Any details for the Admin (optional)"></div>
@@ -922,8 +954,8 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
     <div class="modal-body">
       <div class="table-container" style="max-height:55vh;overflow:auto">
         <table class="data-table">
-          <thead><tr><th>Tool</th><th>Reason</th><th>Qty</th><th>Requested By</th><th>Notes</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody id="rrListBody"><tr class="empty-row"><td colspan="7"><span class="spinner dark"></span> Loading…</td></tr></tbody>
+<thead><tr><th>Tool</th><th>Reason</th><th>Responsible</th><th>Qty</th><th>Requested By</th><th>Notes</th><th>Status</th><th>Actions</th></tr></thead>
+<tbody id="rrListBody"><tr class="empty-row"><td colspan="8"><span class="spinner dark"></span> Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -946,11 +978,16 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
       <input type="hidden" id="editBorrowerId">
       <input type="hidden" id="editEnrollmentId">
       <div class="form-group"><label class="field-label">Full Name *</label><input type="text" id="b_name" class="form-input-full" placeholder="Enter full name"></div>
-      <div class="form-group"><label class="field-label">Course *</label><select id="b_course" class="form-input-full"><option value="">Select course</option></select></div>
-      <div class="form-group"><label class="field-label">Section *</label><select id="b_section" class="form-input-full"><option value="">Select section</option></select></div>
+      <div class="form-group"><label class="field-label">Course *</label><select id="b_course" class="form-input-full"><option value="">None</option></select></div>
+<div class="form-group">
+  <label class="field-label">Section *</label>
+  <select id="b_section" class="form-input-full" disabled>
+    <option value="">Select section</option>
+  </select>
+</div>
       <div class="form-group"><label class="field-label">ID Number *</label><input type="text" id="b_idnum" class="form-input-full" placeholder="Students: e.g., 20240093"><p style="font-size:11px;color:var(--gray-500);margin-top:4px">Id must be the same school format</p></div>
       <div class="form-group"><label class="field-label">Type *</label>
-        <select id="b_type" class="form-input-full">
+         <select id="b_type" class="form-input-full">
           <option value="">Select type</option>
           <option value="Student">Student</option>
           <option value="Faculty">Faculty</option>
@@ -958,7 +995,6 @@ if ($course !== '' && $subject_name !== '' && !$isAdmin) {
         </select>
         <p id="b_typeHint" style="display:none;font-size:11px;color:var(--gray-500);margin-top:4px">Type can only be set when a borrower is first created.</p>
       </div>
-      <div class="form-group" id="b_emailGroup"><label class="field-label">Email</label><input type="email" id="b_email" class="form-input-full" placeholder="email@school.edu"></div>
       <div class="form-group"><label class="field-label">Phone Number</label><input type="tel" id="b_phone" class="form-input-full" placeholder="Contact number"></div>
     </div>
     <div class="modal-footer">

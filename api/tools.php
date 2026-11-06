@@ -133,6 +133,7 @@ if ($method === 'POST') {
     $quantity    = (int)($b['quantity']   ?? 0);
     $min_stock   = (int)($b['min_stock']  ?? 1);
     $description = trim($b['description'] ?? '');
+    $price       = max(0, round((float)($b['price'] ?? 0), 2));
 
     if (!$name || !$category || $quantity < 1 || $min_stock < 1) {
         fail('All required fields must be filled.');
@@ -144,11 +145,11 @@ if ($method === 'POST') {
     // DB itself.
     $code = generateToolCode($db, $name);
 
-    $stmt = $db->prepare('
-        INSERT INTO tools (name, code, category, quantity, available, min_stock, description)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+     $stmt = $db->prepare('
+        INSERT INTO tools (name, code, category, quantity, available, min_stock, price, description)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ');
-    $stmt->execute([$name, $code, $category, $quantity, $quantity, $min_stock, $description]);
+    $stmt->execute([$name, $code, $category, $quantity, $quantity, $min_stock, $price, $description]);
 
     $id   = (int)$db->lastInsertId();
     $stmt = $db->prepare('SELECT * FROM tools WHERE id = ?');
@@ -156,7 +157,7 @@ if ($method === 'POST') {
     $tool = $stmt->fetch();
     $tool['status'] = toolStatus($tool);
 
-    logAudit('tool_create', "Added tool $name ($code), qty $quantity");
+    logAudit('tool_create', "Added tool $name ($code), qty $quantity, price $price");
 
     ok($tool, 201);
 }
@@ -172,7 +173,8 @@ if ($method === 'PUT') {
     $quantity    = (int)($b['quantity']   ?? 0);
     $min_stock   = (int)($b['min_stock']  ?? 1);
     $description = trim($b['description'] ?? '');
-
+    $price       = max(0, round((float)($b['price'] ?? 0), 2));
+    
     if (!$id || !$name || !$code || !$category || $quantity < 1 || $min_stock < 1) {
         fail('All required fields must be filled.');
     }
@@ -194,10 +196,10 @@ if ($method === 'PUT') {
 
     $stmt = $db->prepare('
         UPDATE tools
-        SET name=?, code=?, category=?, quantity=?, available=?, min_stock=?, description=?
+        SET name=?, code=?, category=?, quantity=?, available=?, min_stock=?, price=?, description=?
         WHERE id=?
     ');
-    $stmt->execute([$name, $code, $category, $quantity, $available, $min_stock, $description, $id]);
+    $stmt->execute([$name, $code, $category, $quantity, $available, $min_stock, $price, $description, $id]);
 
     $stmt = $db->prepare('SELECT * FROM tools WHERE id = ?');
     $stmt->execute([$id]);

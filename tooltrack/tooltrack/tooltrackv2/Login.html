@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In · FPST ToolTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--purple:#6426df;--purple-dark:#4114a2;--purple-soft:#f5f1ff;--ink:#17132f;--muted:#66647c;--line:#ded9ef;--white:#fff}
+*{box-sizing:border-box}
+html,body{min-height:100%;margin:0}
+body{font-family:Manrope,Arial,sans-serif;color:var(--ink);background:linear-gradient(135deg,#8c43ee,#5422c4 68%,#3c168f);display:grid;place-items:center;padding:26px}
+.split{width:min(1120px,100%);min-height:660px;display:grid;grid-template-columns:48% 52%;background:white;border-radius:24px;overflow:hidden;box-shadow:0 30px 90px rgba(34,9,96,.28)}
+.left-panel{display:flex;flex-direction:column;padding:36px clamp(30px,4vw,62px) 22px;min-width:0}
+.brand-row{display:flex;align-items:center;gap:14px}
+.brand-mark{width:60px;height:60px;border-radius:50%;overflow:hidden;flex:none;background:#f5f1ff;display:grid;place-items:center}
+.brand-mark img{width:100%;height:100%;object-fit:contain}
+.brand-name{font-weight:800;font-size:23px;line-height:1.1;letter-spacing:-.8px}.brand-name span{color:var(--purple)}
+.brand-sub{font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin-top:6px;font-weight:700}
+.form-wrap{width:100%;max-width:410px;margin:auto; padding:35px 0}
+.card-header h2{font-size:clamp(27px,3vw,34px);letter-spacing:-1.2px;margin:0 0 5px;font-weight:800}
+.card-header p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
+form{margin-top:30px}.form-group{margin-bottom:20px}
+.form-label{display:block;font-size:13px;font-weight:800;margin-bottom:9px}
+.input-wrapper{position:relative;display:flex;align-items:center}
+.field-icon{position:absolute;left:15px;color:#70688c;pointer-events:none}
+.form-input{width:100%;min-height:51px;border:1.5px solid var(--line);border-radius:11px;background:#faf9ff;color:var(--ink);padding:13px 45px 13px 43px;font:500 16px Manrope,Arial,sans-serif;transition:border-color .2s,box-shadow .2s}
+.form-input:focus{outline:0;border-color:var(--purple);box-shadow:0 0 0 3px rgba(100,38,223,.12);background:white}
+.form-input::placeholder{color:#928ba8}
+.toggle-pass{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;background:transparent;color:#655d7c;cursor:pointer;border-radius:9px}
+.row-between{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 24px;font-size:12px}
+.remember{display:flex;align-items:center;gap:9px;cursor:pointer;color:#38314e}.remember input{width:18px;height:18px;accent-color:var(--purple)}
+#forgotPassLink{color:var(--purple);text-decoration:none;font-weight:800}#forgotPassLink:hover{text-decoration:underline}
+.btn-submit{display:flex;justify-content:center;align-items:center;gap:12px;width:100%;min-height:53px;border:0;border-radius:12px;background:linear-gradient(110deg,#742cf2,#5420d0);color:white;font:800 15px Manrope,Arial,sans-serif;cursor:pointer;box-shadow:0 12px 24px rgba(95,38,212,.2);transition:filter .15s,transform .15s}
+.btn-submit:hover{filter:brightness(1.08);transform:translateY(-1px)}.btn-submit:disabled{opacity:.7;cursor:wait}
+.card-footer{margin-top:23px;background:var(--purple-soft);border:1px solid #eae3ff;border-radius:12px;padding:14px;display:flex;gap:11px;align-items:flex-start;color:#514a69;font-size:11px;line-height:1.55}.card-footer i{color:var(--purple);font-size:17px;margin-top:2px}.card-footer strong{color:var(--ink)}
+.left-foot{font-size:10px;color:#817b93}
+.right-panel{position:relative;isolation:isolate;min-height:660px;display:flex;align-items:flex-end;padding:55px;color:white;background:linear-gradient(145deg,#5023c2,#24104d)}
+.right-panel>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:-2}
+.right-panel:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(71,24,168,.25),rgba(37,15,90,.55) 40%,rgba(28,10,75,.94))}
+.right-content{max-width:450px}.eyebrow{font-size:11px;letter-spacing:.25em;font-weight:800;text-transform:uppercase;color:#ded0ff;margin-bottom:16px}
+.right-content h1{font-size:clamp(32px,3.3vw,47px);letter-spacing:-1.6px;line-height:1.13;margin:0;font-weight:800}.right-content h1 em{font-style:normal;color:#d4c0ff}
+.right-content p{font-size:14px;line-height:1.7;color:#e8ddff;margin:17px 0 25px}
+.story-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.story-stats div{display:flex;flex-direction:column;gap:8px;align-items:flex-start}.story-stats i{display:grid;place-items:center;width:46px;height:46px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.23);border-radius:13px;font-size:19px}.story-stats span{font-size:11px;line-height:1.4;font-weight:700}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #aa85ff;outline-offset:3px}
+#forgotPassOverlay{display:none;position:fixed;inset:0;background:rgba(25,12,56,.76);z-index:50;align-items:center;justify-content:center;padding:20px}
+.forgot-dialog{background:white;border-radius:18px;max-width:420px;width:100%;padding:30px;color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.25)}.forgot-dialog h3{margin:0 0 12px}.forgot-dialog p{font-size:13px;line-height:1.7;color:#57516d}
+@media(max-width:900px){body{padding:16px}.split{grid-template-columns:1fr;max-width:540px;min-height:0}.right-panel{display:none}.left-panel{min-height:min(680px,calc(100dvh - 32px));padding:30px 32px 24px}.form-wrap{padding:32px 0}.left-foot{text-align:center}}
+@media(max-width:480px){body{padding:0;background:white;display:block}.split{width:100%;min-height:100dvh;border-radius:0;box-shadow:none}.left-panel{min-height:100dvh;padding:28px 22px 22px}.brand-row{justify-content:center}.brand-mark{width:53px;height:53px}.brand-name{font-size:21px}.brand-sub{font-size:8px}.form-wrap{margin:auto;max-width:420px;padding:28px 0}.card-header h2{font-size:29px}.row-between{flex-wrap:wrap}.left-foot{text-align:center}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
+
+/* Default desktop view: 80% */
+@media screen and (min-width: 1025px) {
+    body {
+        zoom: 0.8;
+    }
+}
+</style>
+<meta name="theme-color" content="#6426df">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="assets/pwa/icon-192.png">
+<link rel="apple-touch-icon" href="assets/pwa/icon-192.png">
+<script src="assets/js/pwa.js" defer></script>
+</head>
+<body>
+<div class="split">
+  <main class="left-panel">
+    <div class="brand-row"><div class="brand-mark"><img src="assets/FPST logo for sidebar.png" alt="FPST Logo"></div><div><div class="brand-name">FPST <span>ToolTrack</span></div><div class="brand-sub">Food Preparation and Service Technology</div></div></div>
+    <div class="form-wrap"><div class="form-inner"><div class="card-header"><h2>Welcome Back</h2><p>Sign in to manage tools, borrowers, and inventory.</p></div>
+      <form id="loginForm">
+        <div class="form-group"><label class="form-label" for="username">Username</label><div class="input-wrapper"><i class="fa-regular fa-user field-icon" aria-hidden="true"></i><input id="username" type="text" class="form-input" name="username" placeholder="Enter your username" required autocomplete="username"></div></div>
+        <div class="form-group"><label class="form-label" for="password">Password</label><div class="input-wrapper"><i class="fa-solid fa-lock field-icon" aria-hidden="true"></i><input type="password" class="form-input" name="password" id="password" placeholder="Enter your password" required autocomplete="current-password"><button type="button" class="toggle-pass" id="togglePass" aria-label="Show password"><i class="fa-solid fa-eye" id="toggleIcon"></i></button></div></div>
+        <div class="row-between"><label class="remember"><input type="checkbox" name="remember"> Remember me</label><a href="#" id="forgotPassLink">Forgot password?</a></div>
+        <div id="loginError" role="alert" aria-live="polite" style="display:none;color:#b42318;font-size:13px;margin-bottom:16px"></div>
+        <button type="submit" class="btn-submit" id="submitBtn"><span id="submitBtnText">Log In</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+      </form>
+      <div class="card-footer"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><div><strong>Authorized personnel only.</strong><div>Need access? Contact your administrator.</div></div></div>
+    </div></div>
+    <div class="left-foot">&copy; 2026 FPST ToolTrack. All rights reserved.</div>
+  </main>
+  <aside class="right-panel" aria-label="Campus information"><img src="assets/Cm Front.png" alt="Campus front view"><div class="right-content"><div class="eyebrow">Organize · Track · Monitor</div><h1>Tools for<br><em>Better Learning</em></h1><p>A smarter way to manage FPST tools, borrowers, and inventory records.</p><div class="story-stats"><div><i class="fa-solid fa-wrench" aria-hidden="true"></i><span>Manage<br>Inventory</span></div><div><i class="fa-solid fa-users" aria-hidden="true"></i><span>Track<br>Borrowers</span></div><div><i class="fa-solid fa-chart-column" aria-hidden="true"></i><span>Generate<br>Reports</span></div></div></div></aside>
+</div>
+<div id="forgotPassOverlay" role="dialog" aria-modal="true" aria-labelledby="forgotTitle"><div class="forgot-dialog"><h3 id="forgotTitle">Forgot your password?</h3><p>Passwords are reset by an Admin, not by email. If you're Staff, ask an Admin to reset it from <strong>User Accounts → the key icon</strong> next to your name.</p><p>If you're the only Admin and locked out, contact your server administrator for account recovery.</p><button type="button" onclick="document.getElementById('forgotPassOverlay').style.display='none'" class="btn-submit" style="margin-top:20px">Got it</button></div></div>
+<script>
+  document.getElementById('forgotPassLink').addEventListener('click',(e)=>{
+    e.preventDefault();
+    document.getElementById('forgotPassOverlay').style.display='flex';
+  });
+  const toggle = document.getElementById('togglePass');
+  const pass = document.getElementById('password');
+  const icon = document.getElementById('toggleIcon');
+  toggle.addEventListener('click', () => {
+    const show = pass.type === 'password';
+    pass.type = show ? 'text' : 'password';
+    icon.classList.toggle('fa-eye');
+    icon.classList.toggle('fa-eye-slash');
+    toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  });
+
+
+  // ── Login form: submit as JSON via fetch ─────────────────────
+  const loginForm = document.getElementById('loginForm');
+  const loginError = document.getElementById('loginError');
+  const submitBtn = document.getElementById('submitBtn');
+  const submitBtnText = document.getElementById('submitBtnText');
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const username = loginForm.querySelector('[name="username"]').value.trim();
+    const password = loginForm.querySelector('[name="password"]').value;
+
+    loginError.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtnText.textContent = 'Signing in…';
+
+    try {
+      const res = await fetch('api/auth.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // send/receive the PHP session cookie
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Login succeeded — redirect to your dashboard/home page
+        window.location.href = 'index.php';
+      } else {
+        loginError.textContent = data.message || 'Login failed. Please try again.';
+        loginError.style.display = 'block';
+      }
+    } catch (err) {
+      loginError.textContent = 'Could not reach the server. Please try again.';
+      loginError.style.display = 'block';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtnText.textContent = 'Log In';
+    }
+  });
+</script>
+</body>
+</html>

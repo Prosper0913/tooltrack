@@ -1,0 +1,14 @@
+# PWA metadata and sensitive responses. No routing or authentication changes.
+AddType application/manifest+json .webmanifest
+<IfModule mod_headers.c>
+  <FilesMatch "\.(php|html)$">
+    Header always set Cache-Control "no-store, private, max-age=0"
+    Header always set Pragma "no-cache"
+  </FilesMatch>
+  <Files "sw.js">
+    Header always set Cache-Control "no-store"
+  </Files>
+</IfModule>
+<FilesMatch "\.(ps1|key|csr|cnf)$">
+  Require all denied
+</FilesMatch>

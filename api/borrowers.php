@@ -175,6 +175,40 @@ if ($method === 'GET') {
     exit;
 }
 
+// Writes/updates the borrower's MANUAL enrollment (cms_subject_id = 0).
+// CMS-synced enrollments are left alone so the next sync isn't fighting it.
+function saveManualEnrollment(PDO $db, int $borrowerId, array $b): void {
+    $course      = trim($b['course'] ?? '');
+    $sectionName = trim($b['section_name'] ?? '');
+    $cmsSectionId = (int)($b['cms_section_id'] ?? 0); // 0 for typed names like "1-A"
+
+    // Find this borrower's existing manual enrollment, if any
+    $find = $db->prepare('SELECT id FROM borrower_enrollments WHERE borrower_id = ? AND cms_subject_id = 0 LIMIT 1');
+    $find->execute([$borrowerId]);
+    $existingId = (int)$find->fetchColumn();
+
+    // Course set to "None" → retire the manual enrollment
+    if ($course === '' || $sectionName === '') {
+        if ($existingId) {
+            $db->prepare('UPDATE borrower_enrollments SET is_active = 0, synced_at = NOW() WHERE id = ?')
+               ->execute([$existingId]);
+        }
+        return;
+    }
+
+    if ($existingId) {
+        $db->prepare('UPDATE borrower_enrollments
+                      SET course = ?, section_name = ?, cms_section_id = ?, is_active = 1, synced_at = NOW()
+                      WHERE id = ?')
+           ->execute([$course, $sectionName, $cmsSectionId, $existingId]);
+    } else {
+        $db->prepare('INSERT INTO borrower_enrollments
+                        (borrower_id, cms_section_id, cms_subject_id, course, section_name, subject_code, subject_name, is_active)
+                      VALUES (?, ?, 0, ?, ?, "", "Manual Section Enrollment", 1)')
+           ->execute([$borrowerId, $cmsSectionId, $course, $sectionName]);
+    }
+}
+
 // ── POST (Create) ─────────────────────────────────────────────
 if ($method === 'POST') {
     $b = body();
@@ -205,6 +239,7 @@ if ($method === 'POST') {
     $stmt->execute([$full_name, $id_number, $type, $email, $phone]);
 
     $id   = (int)$db->lastInsertId();
+    saveManualEnrollment($db, $id, $b);   // <-- add this line
     $stmt = $db->prepare('SELECT * FROM borrowers WHERE id = ?');
     $stmt->execute([$id]);
 
@@ -258,6 +293,7 @@ if ($method === 'PUT') {
         WHERE id=?
     ');
     $stmt->execute([$full_name, $id_number, $email, $phone, $id]);
+    saveManualEnrollment($db, $id, $b);   // <-- add this line
 
     $stmt = $db->prepare('SELECT * FROM borrowers WHERE id = ?');
     $stmt->execute([$id]);

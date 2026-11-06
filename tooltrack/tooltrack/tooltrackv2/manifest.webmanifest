@@ -1,0 +1,17 @@
+{
+  "id": "./",
+  "name": "FPST ToolTrack",
+  "short_name": "ToolTrack",
+  "description": "FPST school tool inventory, borrowing and returns.",
+  "lang": "en",
+  "start_url": "./index.php",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6426df",
+  "prefer_related_applications": false,
+  "icons": [
+    {"src":"assets/pwa/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"assets/pwa/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}

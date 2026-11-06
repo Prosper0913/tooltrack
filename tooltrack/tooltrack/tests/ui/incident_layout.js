@@ -1,0 +1,78 @@
+// Isolated browser fixtures only. No authenticated production API calls or writes.
+const API='fixture-api';window.CURRENT_ROLE='Admin';
+const additionalReportStates={loss_history:{search:''}};let fixtureReport='';function viewReport(type){fixtureReport=type;}
+const escapeHtml=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+const parseDbDate=v=>new Date(String(v).replace(' ','T'));
+const bhFormatDate=v=>String(v).slice(0,10);
+const MT_IS_ADMIN=()=>window.CURRENT_ROLE==='Admin';
+function showToast(){}function refreshToolStockViews(){}function loadNotifications(){}function loadBorrowHistory(){}
+function ensureHistoryPager(id,key){if(!document.getElementById(key+'PagerInfo'))document.getElementById(id).insertAdjacentHTML('beforeend',`<div class="pagination"><div id="${key}PagerInfo"></div><div id="${key}PagerBtns"></div></div>`);}
+function renderPagination(info,buttons,page,pages,size,total){document.getElementById(info).textContent=`Page ${page} of ${pages} · ${total} cases`;}
+const fixtureRows=Array.from({length:25},(_,i)=>({source:'case',id:101+i,case_id:'DLI-'+String(101+i).padStart(5,'0'),tool_name:i?'Measuring tool '+i:'Oven',tool_code:'FPST-'+(101+i),borrower:i%3?'Alex Santos':'',borrower_number:i%3?'2026000123':'',incident:i%2?'damaged':'lost',quantity:9,remaining_units:5,inventory_status:i%2?'Under Repair':'Partially Closed',age_days:14+i,needs_review:i%2,pending_writeoff_count:i===0?1:0,is_closed:0}));
+const fixtureLoss={source:'missing',id:303,original:4,eligible:2,pending_quantity:2,gross_written_off:1,later_recovered:0,net_loss:1,recovered:1,outcome:'Partially Closed',age_days:20,needs_review:true,review_days:14,tool:{name:'Oven',quantity:4,available:2,missing_qty:2},requests:[{id:7,quantity:2,status:'pending',reason:'Not recovered after a complete search',investigation_notes:'Checked workshop, stock room and borrower records.',requester_name:'Sam Reyes',requested_at:'2026-10-20 08:00:00',recovered_quantity:0,accountability_status:'Review required',events:[{action:'request',quantity:2,notes:'Investigation completed',user_name:'Sam Reyes',created_at:'2026-10-20 08:00:00'}]}]};
+let fixturePosts=0;
+async function apiFetch(url,options){
+ if(options?.method&&options.method!=='GET'){fixturePosts++;throw Error('Fixture backend unavailable; your entries are retained.');}
+ if(url.includes('meta=1'))return {data:{csrf:'fixture-token'}};
+ if(url.includes('summary=1'))return {data:{active_missing_units:18,damaged_units:7,pending_requests:3,review_cases:6,review_days:14}};
+ if(url.includes('charge_cases.php'))return {data:{rows:fixtureRows,total:70,page:1,per_page:25}};
+ if(url.includes('writeoffs.php'))return {data:structuredClone(fixtureLoss)};
+ if(url.includes('missing_tools.php'))return {data:{id:303,report_no:'MR-00303',tool_name:'Oven',tool_code:'FPST-OVEN',borrower:'Alex Santos',borrower_id_number:'2026000123',borrow_txn_ref:'TXN-103',due_date:'2026-10-18',missing_date:'2026-10-20',qty_reported:4,qty_missing:4,qty_recovered:1,qty_replaced:0,qty_surplus:0,qty_written_off:1,open_qty:2,status:'confirmed',outcome:'Partially Closed',reported_at:'2026-10-20 08:00:00',reported_by_name:'Sam Reyes',confirmed_at:'2026-10-20 09:00:00',reason:'Missing at return',investigation_notes:'Storage and borrower checked.',incident_cases:[],events:[{action:'reported',qty:4,user_name:'Sam Reyes',created_at:'2026-10-20 08:00:00',detail:'Reported from the original loan'}]}};
+ if(url.includes('replacement_requests.php')){
+ const lost=url.endsWith('202');return {data:{request:{id:lost?202:101,reason:lost?'lost':'damaged',tool_name_snapshot:'Oven',tool_code:'FPST-OVEN',student_name:'Alex Santos',student_id:'2026000123',incident_quantity:lost?4:9,quantity_needed:lost?4:9,unresolved_quantity:lost?2:5,resolved_quantity:lost?0:4,repair_quantity:2,inventory_status:lost?'Missing':'Pending Review',missing_report_id:lost?303:null,created_at:'2026-10-20 08:00:00',requested_by_snapshot:'Sam Reyes',notes:'Investigation notes: '+('Detailed inspection evidence. '.repeat(12)),payment_version:1},sources:[],items:[],events:Array.from({length:30},(_,i)=>({action:'inventory_resolution',notes:'Inspected affected units. '+('Notes retained. '.repeat(10)),user_name:'Sam Reyes',created_at:'2026-10-20 08:00:00'})),lifecycle:{age_days:15,is_closed:0,needs_review:1,inventory_status:lost?'Partially Closed':'Pending Review'}}};
+ }
+ throw Error('Unknown fixture URL: '+url);
+}
+async function runIncidentLayoutChecks(){
+ const checks=[],assert=(ok,label)=>{if(!ok)throw Error(label);checks.push(label);};
+ renderToolsTable([{id:1,name:'Oven',code:'FPST-OVEN',category:'Cookware',quantity:2,available:2,good_qty:2,minor_qty:0,damaged_qty:0,missing_qty:0,current_loans:0,active_borrowers:0,price:100,is_active:1,gross_written_off:2,later_loss_recoveries:1},{id:2,name:'Pan',code:'FPST-PAN',category:'Cookware',quantity:4,available:2,good_qty:2,minor_qty:0,damaged_qty:1,missing_qty:1,current_loans:0,active_borrowers:0,price:100,is_active:1,gross_written_off:0,later_loss_recoveries:0}]);
+ assert(document.querySelector('#toolsPage thead').textContent.includes('Active Stock / Available'),'Inventory header reflects canonical active stock');
+ assert(document.getElementById('toolsTableBody').textContent.includes('1 missing · 1 damaged'),'Inventory issues name explicit unit counts');
+ assert(!document.querySelector('#toolsPage .tt-condition-bar').getAttribute('aria-label').includes('missing'),'Physical condition summary excludes missing as a condition');
+ const expand=document.querySelector('#toolsPage .tt-expand');expand.click();assert(expand.getAttribute('aria-expanded')==='true'&&!expand.closest('tr').nextElementSibling.hidden,'Inventory rows retain expandable details');
+ assert(expand.closest('tr').nextElementSibling.textContent.includes('2 written off historically · 1 later recovered · 1 net lost'),'Expanded inventory separates gross, recovered and net loss history');
+ openToolLossHistory(1);assert(fixtureReport==='loss_history'&&additionalReportStates.loss_history.search==='FPST-OVEN','Inventory history link opens real report route with SKU search');
+ assert(toolMenuItems(toolMenuCache.get(1)).some(item=>item.label==='Edit'),'Existing inventory actions remain available');
+ await loadChargeCases();
+ assert(document.querySelectorAll('.iu-stat').length===4,'Four compact cards use API response counts');
+ assert(cwTab==='active','Active Cases is default');
+ assert(!document.querySelector('#rrListContainer .pagination')&&document.querySelector('#cwResults>.pagination'),'Pagination remains outside bounded scroll container');
+ assert(document.getElementById('rrListContainer').scrollHeight>document.getElementById('rrListContainer').clientHeight,'Long table scrolls within a bounded viewport');
+ const tabs=document.querySelectorAll('.cw-tabs [role=tab]');tabs[0].focus();tabs[0].dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+ assert(cwTab==='pending'&&tabs[1].getAttribute('aria-selected')==='true','Arrow keys navigate case tabs');
+ await rpView(101);await new Promise(r=>requestAnimationFrame(r));
+ const modal=document.getElementById('rpDetailsModal'),view=incidentViews.get('rpDetailsModal');
+ assert(modal.querySelector('[role=dialog]')&&modal.querySelectorAll('[role=tab]').length===3,'Details dialog has proper dialog and tab semantics');
+ assert(modal.querySelector('.iu-summary-strip').textContent.includes('Unresolved')&&!modal.querySelector('.iu-summary-strip').textContent.includes('Written off'),'Damage summary uses incident-appropriate labels');
+ assert(view.groups.every(g=>g.hidden),'Forms remain collapsed until an action is selected');
+ incidentTab('rpDetailsModal','actions');incidentChoose('rpDetailsModal',0);
+ assert(!view.submit.hidden&&view.groups.filter(g=>!g.hidden).length===1,'Selected action shows one form and fixed footer submit');
+ const qty=document.getElementById('caseInventoryQty');qty.value='3';qty.dispatchEvent(new Event('input',{bubbles:true}));incidentTab('rpDetailsModal','history');incidentTab('rpDetailsModal','actions');
+ assert(qty.value==='3','Switching tabs retains entered form values');
+ view.submit.focus();view.submit.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true}));assert(document.activeElement===modal.querySelector('.modal-close'),'Tab traps focus within incident dialog');
+ let allowDiscard=false;const realConfirm=window.confirm;window.confirm=()=>allowDiscard;
+ closeModal('rpDetailsModal');assert(modal.classList.contains('active'),'Unsaved changes guard blocks dismissal');
+ allowDiscard=true;closeModal('rpDetailsModal');assert(!modal.classList.contains('active'),'Confirmed discard closes dialog');assert(document.activeElement===tabs[1],'Closing restores prior focus');window.confirm=realConfirm;
+ await rpView(202);const lost=incidentViews.get('rpDetailsModal');incidentTab('rpDetailsModal','actions');
+ const reject=lost.choices.findIndex(c=>c.button.dataset.lossAction==='reject');incidentChoose('rpDetailsModal',reject);
+ assert(!document.getElementById('lossReason').closest('[data-loss-field]').hidden,'Admin rejection exposes reason form');
+ assert(document.getElementById('lossQty').closest('[data-loss-field]').hidden,'Rejection hides unrelated quantity');
+ assert(lost.panels.history.textContent.includes('Sam Reyes')&&lost.panels.history.textContent.includes('request'),'History retains write-off actor, action and notes');
+ assert(lost.panels.overview.textContent.includes('Borrower accountability'),'Accountability is separate in Overview');
+ const reason=document.getElementById('lossReason');reason.value='Continue investigation';reason.dispatchEvent(new Event('input',{bubbles:true}));const saving=lost.submit.onclick();await lost.submit.onclick();await saving;
+ assert(fixturePosts===1&&lost.error.textContent.includes('unavailable')&&reason.value==='Continue investigation','Backend failure retains input, shows inline error and prevents duplicate submit');
+ const confirmation=incidentConfirmWriteoff(fixtureLoss,2);const dialog=document.querySelector('dialog[open]');
+ assert(dialog.textContent.includes('4 → 2')&&dialog.textContent.includes('2 → 2')&&dialog.textContent.includes('2 → 0'),'Separate confirmation displays exact total, available and missing impact');
+ dialog.querySelector('button[value=cancel]').click();assert(await confirmation===false,'Confirmation cancellation does not submit');
+ const stored=structuredClone(fixtureLoss);fixtureLoss.pending_quantity=0;fixtureLoss.requests=[];window.CURRENT_ROLE='Staff';await rpView(202);const staff=incidentViews.get('rpDetailsModal');
+ assert(staff.choices.some(c=>c.button.dataset.lossAction==='request')&&!staff.choices.some(c=>['direct','approve','reject'].includes(c.button.dataset.lossAction)),'Staff sees request workflow without admin approval actions');
+ Object.assign(fixtureLoss,stored);window.CURRENT_ROLE='Admin';incidentSaved('rpDetailsModal');closeModal('rpDetailsModal');await openMissingCase(303);const original=incidentViews.get('missingActionModal');
+ assert(original.choices.some(c=>c.button.textContent==='Record Recovery')&&original.panels.overview.textContent.includes('Sam Reyes'),'Original missing dialog preserves recovery and full reporter details');
+ incidentTab('missingActionModal','actions');incidentChoose('missingActionModal',original.choices.findIndex(c=>c.button.textContent==='Record Recovery'));
+ assert(!original.submit.hidden&&document.getElementById('mc_recQty').max==='2','Original recovery keeps current eligible quantity and footer action');
+ incidentSaved('missingActionModal');closeModal('missingActionModal');await rpView(202);incidentTab('rpDetailsModal','actions');const finalView=incidentViews.get('rpDetailsModal');incidentChoose('rpDetailsModal',finalView.choices.findIndex(c=>c.button.dataset.lossAction==='reject'));
+ const rect=modal.querySelector('.modal-footer').getBoundingClientRect();assert(rect.bottom<=innerHeight&&rect.top>=0,'Footer stays inside viewport');
+ assert(document.documentElement.scrollWidth<=innerWidth,'Page has no horizontal viewport overflow');
+ document.getElementById('result').textContent=checks.map(c=>'PASS: '+c).join('\n')+'\nPASSED: '+checks.length;
+ if(new URLSearchParams(location.search).get('screen')==='page'){incidentSaved('rpDetailsModal');closeModal('rpDetailsModal');cwSelectTab('active');}
+}

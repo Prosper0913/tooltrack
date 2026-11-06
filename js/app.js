@@ -143,7 +143,7 @@ function navigateTo(page){
   if(page==='dashboard') loadDashboard();
   if(page==='tools')     loadTools();
   if(page==='borrowers') loadBorrowers();
-  if(page==='borrow')    { loadBorrowerSelect(); loadBorrowHistory(); loadToolsForBorrow(); loadRecentActivity('borrowActivityFeed','borrow'); }
+  if(page==='borrow')    { loadBorrowerSelect(); loadBorrowHistory(); loadToolsForBorrow(); loadBorrowCourseOptions(); loadRecentActivity('borrowActivityFeed','borrow'); }
   if(page==='return')    { loadReturnHistory(); loadActiveBorrowsForReturn(); loadRecentActivity('returnActivityFeed','return'); loadBorrowerSelect(); }
   if(page==='reports')   loadReports();
   if(page==='users')     loadUsers();
@@ -361,20 +361,20 @@ async function loadTools(){
   const date_from=document.getElementById('toolDateFrom').value;
   const date_to=document.getElementById('toolDateTo').value;
   const params=new URLSearchParams({page:toolsCurrentPage,per_page:TOOLS_PER_PAGE,status,category,search,date_from,date_to});
-  document.getElementById('toolsTableBody').innerHTML='<tr class="empty-row"><td colspan="9"><span class="spinner dark"></span> Loading…</td></tr>';
+  document.getElementById('toolsTableBody').innerHTML='<tr class="empty-row"><td colspan="10"><span class="spinner dark"></span> Loading…</td></tr>';
   try{
     const res=await apiFetch(`${API}/tools.php?${params}`);
     renderToolsTable(res.data||[]);
     const totalPages=Math.ceil((res.total||0)/TOOLS_PER_PAGE);
     renderPagination('toolsPaginationInfo','toolsPaginationBtns',toolsCurrentPage,totalPages,TOOLS_PER_PAGE,res.total||0,p=>{toolsCurrentPage=p;loadTools();});
-  }catch(_){document.getElementById('toolsTableBody').innerHTML='<tr class="empty-row"><td colspan="9">Failed to load tools.</td></tr>';}
+  }catch(_){document.getElementById('toolsTableBody').innerHTML='<tr class="empty-row"><td colspan="10">Failed to load tools.</td></tr>';}
 }
 
 const CAT_ICONS={Utensils:'fa-solid fa-utensils',Cookware:'fas fa-fire-burner','Measuring Tools':'fas fa-ruler',Accessories:'fas fa-toolbox',Dinnerware:'fas fa-plate-wheat',Cutleries:'fas fa-utensils',Glassware:'fas fa-martini-glass'};
 
 function renderToolsTable(tools){
   const tbody=document.getElementById('toolsTableBody');
-  if(!tools.length){tbody.innerHTML='<tr class="empty-row"><td colspan="9">No tools found.</td></tr>';return;}
+  if(!tools.length){tbody.innerHTML='<tr class="empty-row"><td colspan="10">No tools found.</td></tr>';return;}
   const isAdmin = window.CURRENT_ROLE === 'Admin';
   tbody.innerHTML=tools.map(t=>`
     <tr${t.is_active==0?' style="opacity:.55"':''}>
@@ -387,6 +387,7 @@ function renderToolsTable(tools){
       <td data-label="Total Qty">${t.quantity}</td>
       <td data-label="Available">${t.available}</td>
       <td data-label="Min Stock">${t.min_stock}</td>
+      <td data-label="Price">₱${Number(t.price||0).toFixed(2)}</td>
       <td data-label="Status"><span class="status-badge ${t.status}"><span class="status-dot"></span>${statusLabel(t.status)}</span></td>
       <td data-label="Date Added">${t.created_at?new Date(t.created_at.replace(' ','T')).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'—'}</td>
       <td data-label="Actions"><div class="action-btns">
@@ -445,6 +446,8 @@ async function openReplacementRequestModal(){
   document.getElementById('rr_qty').value=1;
   document.getElementById('rr_notes').value='';
   document.getElementById('rr_reason').value='damaged';
+  document.getElementById('rr_responsibleGroup').style.display='';   // NEW
+  fillResponsibleBorrowerSelect();                                    // NEW
   openModal('replacementRequestModal');
   try{
     const res=await apiFetch(`${API}/tools.php?per_page=200`);
@@ -455,6 +458,26 @@ async function openReplacementRequestModal(){
   }catch(_){
     sel.innerHTML='<option value="">Failed to load tools</option><option value="__custom__">Not in the list — I\'ll type the name</option>';
   }
+}
+async function fillResponsibleBorrowerSelect(){
+  const sel=document.getElementById('rr_responsible');
+  sel.innerHTML='<option value="">Unknown / not applicable</option>';
+  // borrowerOptionsData is only filled once the Borrow/Return page has been
+  // opened, so load it here if the user came straight to the Tools page.
+  if(!borrowerOptionsData.length) await loadBorrowerSelect();
+  borrowerOptionsData.forEach(b=>{
+    const o=document.createElement('option');
+    o.value=b.id;
+    o.textContent=`${b.full_name} — ${b.id_number}`;
+    sel.appendChild(o);
+  });
+}
+
+function onReplacementReasonChange(){
+  const reason=document.getElementById('rr_reason').value;
+  // Nobody is at fault for normal wear, so hide the field for "Worn Out"
+  document.getElementById('rr_responsibleGroup').style.display = reason==='worn_out' ? 'none' : '';
+  if(reason==='worn_out') document.getElementById('rr_responsible').value='';
 }
 
 function onReplacementToolChange(){
@@ -477,6 +500,9 @@ async function saveReplacementRequest(){
   if(toolSel==='__custom__') payload.tool_name=customName;
   else payload.tool_id=parseInt(toolSel);
 
+  const responsibleId=document.getElementById('rr_responsible').value;
+  if(reason!=='worn_out' && responsibleId) payload.responsible_borrower_id=parseInt(responsibleId);
+
   setLoading('saveReplacementRequestBtn',true);
   try{
     await apiFetch(`${API}/replacement_requests.php`,{method:'POST',body:JSON.stringify(payload)});
@@ -487,7 +513,7 @@ async function saveReplacementRequest(){
 }
 
 async function openReplacementRequestsModal(){
-  document.getElementById('rrListBody').innerHTML='<tr class="empty-row"><td colspan="7"><span class="spinner dark"></span> Loading…</td></tr>';
+  document.getElementById('rrListBody').innerHTML='<tr class="empty-row"><td colspan="8"><span class="spinner dark"></span> Loading…</td></tr>';
   openModal('replacementRequestsListModal');
   loadReplacementRequestsList();
 }
@@ -501,13 +527,14 @@ async function loadReplacementRequestsList(){
     const res=await apiFetch(`${API}/replacement_requests.php`);
     const rows=res.data||[];
     if(!rows.length){
-      document.getElementById('rrListBody').innerHTML='<tr class="empty-row"><td colspan="7">No replacement requests yet.</td></tr>';
+      document.getElementById('rrListBody').innerHTML='<tr class="empty-row"><td colspan="8">No replacement requests yet.</td></tr>';
       return;
     }
     document.getElementById('rrListBody').innerHTML=rows.map(r=>`
       <tr>
         <td data-label="Tool">${r.tool_name_snapshot}${r.tool_code?` <code style="font-size:11px">${r.tool_code}</code>`:''}</td>
         <td data-label="Reason">${RR_REASON_LABEL[r.reason]||r.reason}</td>
+        <td data-label="Responsible">${r.responsible_name_snapshot?escapeHtml(r.responsible_name_snapshot):'—'}</td>
         <td data-label="Qty">${r.quantity_needed}</td>
         <td data-label="Requested By">${r.requested_by_name||'—'}</td>
         <td data-label="Notes">${r.notes||'—'}</td>
@@ -524,7 +551,7 @@ async function loadReplacementRequestsList(){
         </div></td>
       </tr>`).join('');
   }catch(_){
-    document.getElementById('rrListBody').innerHTML='<tr class="empty-row"><td colspan="7">Failed to load requests.</td></tr>';
+    document.getElementById('rrListBody').innerHTML='<tr class="empty-row"><td colspan="8">Failed to load requests.</td></tr>';
   }
 }
 
@@ -545,7 +572,7 @@ function openAddToolModal(){
   document.getElementById('editToolId').value='';
   document.getElementById('toolModalTitle').textContent='Add New Tool';
   document.getElementById('saveToolBtn').textContent='Add Tool';
-  ['t_name','t_code','t_qty','t_min','t_desc'].forEach(id=>document.getElementById(id).value='');
+['t_name','t_code','t_qty','t_min','t_price','t_desc'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('t_category').value='';
   openModal('toolModal');
 }
@@ -563,24 +590,27 @@ async function editTool(id){
     document.getElementById('t_qty').value=t.quantity;
     document.getElementById('t_min').value=t.min_stock;
     document.getElementById('t_desc').value=t.description||'';
+    document.getElementById('t_price').value=t.price??0;
     openModal('toolModal');
   }catch(_){}
 }
 
 async function saveTool(){
   const id=document.getElementById('editToolId').value;
-  const body={
-    name:document.getElementById('t_name').value.trim(),
-    category:document.getElementById('t_category').value,
-    quantity:parseInt(document.getElementById('t_qty').value)||0,
-    min_stock:parseInt(document.getElementById('t_min').value)||0,
-    description:document.getElementById('t_desc').value.trim()
-  };
+const body={
+  name:document.getElementById('t_name').value.trim(),
+  category:document.getElementById('t_category').value,
+  quantity:parseInt(document.getElementById('t_qty').value)||0,
+  min_stock:parseInt(document.getElementById('t_min').value)||0,
+  price:parseFloat(document.getElementById('t_price').value),
+  description:document.getElementById('t_desc').value.trim()
+};
   // Code is system-generated on create; on edit it's carried along
   // unchanged (the field is read-only) so the PUT endpoint — which
   // still expects it — gets the same code back.
   if(id) body.code=document.getElementById('t_code').value.trim();
   if(!body.name||!body.category||!body.quantity||!body.min_stock){showToast('Please fill in all required fields.','error');return;}
+  if(isNaN(body.price)||body.price<0){showToast('Please enter a valid price (0 or more).','error');return;}
   if(id) body.id=parseInt(id);
   setLoading('saveToolBtn',true);
   try{
@@ -637,8 +667,8 @@ function printQR(){
 async function exportToolsCSV(){
   try{
     const res=await apiFetch(`${API}/tools.php?per_page=9999`);
-    const rows=[['Name','Code','Category','Quantity','Available','Min Stock','Status']];
-    (res.data||[]).forEach(t=>rows.push([t.name,t.code,t.category,t.quantity,t.available,t.min_stock,statusLabel(t.status)]));
+    const rows=[['Name','Code','Category','Quantity','Available','Min Stock','Price','Status']];
+    (res.data||[]).forEach(t=>rows.push([t.name,t.code,t.category,t.quantity,t.available,t.min_stock,t.price,statusLabel(t.status)]));
     downloadCSV(rows,'tools_inventory.csv');
     showToast('Tools inventory exported.','success');
   }catch(_){}
@@ -658,7 +688,7 @@ async function loadBorrowers(){
   const type=document.getElementById('borrowerTypeFilter').value;
   const search=document.getElementById('borrowerSearchFilter').value;
   const params=new URLSearchParams({page:borrowersCurrentPage,per_page:BORROWERS_PER_PAGE,type,search});
-  document.getElementById('borrowerTableBody').innerHTML='<tr class="empty-row"><td colspan="9"><span class="spinner dark"></span> Loading…</td></tr>';
+  document.getElementById('borrowerTableBody').innerHTML='<tr class="empty-row"><td colspan="10"><span class="spinner dark"></span> Loading…</td></tr>';
   try{
     const res=await apiFetch(`${API}/borrowers.php?${params}`);
     renderBorrowersTable(res.data||[]);
@@ -682,7 +712,7 @@ function activeBorrowsBadge(b){
 
 function renderBorrowersTable(borrowers){
   const tbody=document.getElementById('borrowerTableBody');
-  if(!borrowers.length){tbody.innerHTML='<tr class="empty-row"><td colspan="9">No borrowers found.</td></tr>';return;}
+  if(!borrowers.length){tbody.innerHTML='<tr class="empty-row"><td colspan="10">No borrowers found.</td></tr>';return;}
   const isAdmin = window.CURRENT_ROLE === 'Admin';
   tbody.innerHTML=borrowers.map(b=>`
     <tr${b.is_active==0?' style="opacity:.55"':''}>
@@ -801,20 +831,66 @@ function escapeHtml(value){
   return String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 }
 
-function openAddBorrowerModal(){
+//GI USOB NI NAHO GUNAD DIRI KUTOB LINE ---
+const FPST_SECTIONS = ['1-A','1-B','1-C','1-D','1-E','2-A','2-B','2-C','2-D','2-E'];
+
+function isFpstSelected(courseId = 'b_course') {
+  const courseSelect = document.getElementById(courseId);
+  const val = (courseSelect.value || '').trim().toUpperCase();
+  const txt = (courseSelect.selectedOptions[0]?.textContent || '').trim().toUpperCase();
+  return val === 'FPST' || txt === 'FPST';
+}
+
+function syncCustomSections(courseId = 'b_course', sectionId = 'b_section') {
+  const sectionSelect = document.getElementById(sectionId);
+
+  sectionSelect.querySelectorAll('option[data-custom="1"]').forEach(o => o.remove());
+  if (!isFpstSelected(courseId)) return;
+
+  FPST_SECTIONS.forEach(sec => {
+    if ([...sectionSelect.options].some(o => o.textContent.trim() === sec)) return;
+    const opt = document.createElement('option');
+    opt.value = sec;
+    opt.textContent = sec;
+    opt.dataset.custom = '1';
+    sectionSelect.appendChild(opt);
+  });
+}
+
+function ensureNoneOption() {
+  const courseSelect = document.getElementById('b_course');
+  let noneOption = courseSelect.querySelector('option[value=""]');
+  if (!noneOption) {
+    noneOption = document.createElement('option');
+    noneOption.value = '';
+    courseSelect.insertBefore(noneOption, courseSelect.firstChild);
+  }
+  noneOption.textContent = 'None';
+}
+
+async function openAddBorrowerModal(){
   document.getElementById('editBorrowerId').value='';
   document.getElementById('editEnrollmentId').value='';
   document.getElementById('borrowerModalTitle').textContent='Add New Borrower';
   document.getElementById('saveBorrowerBtn').textContent='Add Borrower';
-  ['b_name','b_idnum','b_email','b_phone'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('b_type').value='';
-  // Create mode: type is choosable and email is available.
-  document.getElementById('b_type').disabled=false;
+  ['b_name','b_idnum','b_phone'].forEach(id=>document.getElementById(id).value='');
+
+  const typeSelect = document.getElementById('b_type');
+  typeSelect.value='';
+  typeSelect.disabled = false;
   document.getElementById('b_typeHint').style.display='none';
-  document.getElementById('b_emailGroup').style.display='';
-  loadBorrowerEnrollmentOptions();
-  document.getElementById('b_course').value='';
-  document.getElementById('b_section').innerHTML='<option value="">Select section</option>';
+
+  await loadBorrowerEnrollmentOptions();
+
+  const courseSelect = document.getElementById('b_course');
+  ensureNoneOption();
+  courseSelect.value = '';
+
+  const sectionSelect = document.getElementById('b_section');
+  syncCustomSections();          // course is empty, so this removes custom sections
+  sectionSelect.value = '';
+  sectionSelect.disabled = true;
+
   openModal('borrowerModal');
 }
 
@@ -827,63 +903,120 @@ async function editBorrower(id){
     const b=borrowerRes.data;
     const enrollments=enrollmentRes.data||[];
     const manual=enrollments.find(e=>String(e.cms_subject_id)==='0') || enrollments[0] || null;
+
     document.getElementById('editBorrowerId').value=b.id;
     document.getElementById('editEnrollmentId').value=manual?.id||'';
     document.getElementById('borrowerModalTitle').textContent='Edit Borrower';
     document.getElementById('saveBorrowerBtn').textContent='Save Changes';
     document.getElementById('b_name').value=b.full_name||'';
     document.getElementById('b_idnum').value=b.id_number||'';
-    document.getElementById('b_type').value=b.type||'';
-    document.getElementById('b_email').value=b.email||''; // kept (hidden) so saving doesn't wipe a stored email
     document.getElementById('b_phone').value=b.phone||'';
-    // Edit mode: email isn't editable and type is locked after creation.
-    document.getElementById('b_emailGroup').style.display='none';
-    document.getElementById('b_type').disabled=true;
-    document.getElementById('b_typeHint').style.display='block';
+
     await loadBorrowerEnrollmentOptions(manual?.course||b.course||'', manual?.cms_section_id||b.cms_section_id||'');
+
+    const courseSelect = document.getElementById('b_course');
+    ensureNoneOption();
+
+    const loadedCourse = manual?.course||b.course||'';
+    courseSelect.value = loadedCourse;
+
+    // Add FPST sections AFTER the course value is set, BEFORE the saved section is selected
+    syncCustomSections();
+
+    const typeSelect = document.getElementById('b_type');
+    const sectionSelect = document.getElementById('b_section');
+
+    const savedSectionName = manual?.section_name || b.section_name || '';
+    const match = Array.from(sectionSelect.options)
+      .find(o => o.value && o.textContent.trim() === savedSectionName);
+    if (match) sectionSelect.value = match.value;
+
+    if (loadedCourse) {
+      typeSelect.value = 'Student';
+      typeSelect.disabled = true;
+      sectionSelect.disabled = false;
+    } else {
+      typeSelect.value = b.type||'';
+      typeSelect.disabled = false;
+      sectionSelect.disabled = true;
+    }
+
     openModal('borrowerModal');
   }catch(_){ }
 }
 
 async function saveBorrower(){
-  const id=document.getElementById('editBorrowerId').value;
-  const body={
-    full_name:document.getElementById('b_name').value.trim(),
-    id_number:document.getElementById('b_idnum').value.trim(),
-    type:document.getElementById('b_type').value,
-    email:document.getElementById('b_email').value.trim(),
-    phone:document.getElementById('b_phone').value.trim()
-  };
-  const course=document.getElementById('b_course').value;
-  const section=document.getElementById('b_section');
-  const sectionId=parseInt(section.value||'0',10);
-  const sectionName=section.options[section.selectedIndex]?.dataset?.name||section.options[section.selectedIndex]?.text||'';
-  // Type is only required when creating — on edit it's locked and the
-  // server uses the stored value (also covers Guests, who have no
-  // matching option in this dropdown).
-  if(!body.full_name||!body.id_number||(!id&&!body.type)){showToast('Please fill in all required fields.','error');return;}
-  // Strip spaces/dashes before validating & storing — a real physical
-  // ID usually has a dash on it (e.g. 2024-00123), but the stored
-  // format is digits-only. Without this, typing the ID exactly as
-  // printed on the card gets wrongly rejected as "not 8-10 digits".
-  body.id_number=body.id_number.replace(/[\s-]/g,'');
-  if(body.type==='Student' && !/^\d{8,10}$/.test(body.id_number)){showToast('Student ID must be 8 to 10 digits (numbers only).','error');return;}
-  if(!course||!sectionId){showToast('Please select a course and section.','error');return;}
-  if(id){ body.id=parseInt(id,10); delete body.type; } // type can't be changed after creation
-  setLoading('saveBorrowerBtn',true);
+  const id          = document.getElementById('editBorrowerId').value;
+  const enrollmentId= document.getElementById('editEnrollmentId').value;
+  const full_name   = document.getElementById('b_name').value.trim();
+  const rawIdNumber = document.getElementById('b_idnum').value.trim();
+  const phone       = document.getElementById('b_phone').value.trim();
+  const course      = document.getElementById('b_course').value;
+  const typeSelect  = document.getElementById('b_type');
+  const type        = course ? 'Student' : typeSelect.value; // disabled selects still need a value
+  const sectionSel  = document.getElementById('b_section');
+  const sectionVal  = sectionSel.value;
+  const sectionName = sectionSel.selectedOptions[0]?.dataset.name || sectionVal;
+
+  if(!full_name){ showToast('Full name is required.','error'); return; }
+  if(!rawIdNumber){ showToast('ID number is required.','error'); return; }
+  if(!type){ showToast('Please select a type.','error'); return; }
+  if(course && !sectionVal){ showToast('Please select a section.','error'); return; }
+
+  // Same normalization as handleBorrow(): strip dashes/spaces
+  const id_number = rawIdNumber.replace(/[\s-]/g,'');
+  if(!id && type==='Student' && !/^\d{8,10}$/.test(id_number)){
+    showToast('Student ID must be 8 to 10 digits (numbers only).','error');
+    return;
+  }
+
+  const body = { full_name, id_number, type, phone };
+  if(course){
+    body.course = course;
+    body.section_name = sectionName;
+    // DB sections have a numeric cms_section_id; the FPST list uses names like "1-A"
+    if(/^\d+$/.test(sectionVal)) body.cms_section_id = parseInt(sectionVal);
+    if(enrollmentId) body.enrollment_id = parseInt(enrollmentId);
+  }
+  if(id) body.id = parseInt(id);
+
+  setLoading('saveBorrowerBtn', true);
   try{
-    const borrowerRes=await apiFetch(`${API}/borrowers.php`,{method:id?'PUT':'POST',body:JSON.stringify(body)});
-    const borrowerId=id?parseInt(id,10):borrowerRes.data.id;
-    const enrollmentId=document.getElementById('editEnrollmentId').value;
-    const enrollmentBody={borrower_id:borrowerId,cms_section_id:sectionId,course,section_name:sectionName};
-    if(enrollmentId) enrollmentBody.id=parseInt(enrollmentId,10);
-    await apiFetch(`${API}/borrower_enrollments.php`,{method:enrollmentId?'PUT':'POST',body:JSON.stringify(enrollmentBody)});
-    showToast(id?`"${body.full_name}" updated.`:`"${body.full_name}" added.`,'success');
+    await apiFetch(`${API}/borrowers.php`, { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
+    showToast(id ? `"${full_name}" updated.` : `"${full_name}" added.`);
     closeModal('borrowerModal');
     loadBorrowers();
     loadBorrowerSelect();
-  }catch(_){ }finally{setLoading('saveBorrowerBtn',false);}
+  }catch(_){
+  }finally{
+    setLoading('saveBorrowerBtn', false);
+  }
 }
+
+// Delegated listener: survives the course <select> being rebuilt or replaced
+document.addEventListener('change', (e) => {
+  if (!e.target || e.target.id !== 'b_course') return;
+
+  // Defer so we run AFTER any other handler that rebuilds the section list
+  setTimeout(() => {
+    const courseSelect = document.getElementById('b_course');
+    const typeSelect = document.getElementById('b_type');
+    const sectionSelect = document.getElementById('b_section');
+
+    sectionSelect.value = '';
+    syncCustomSections();
+
+    if (courseSelect.value) {
+      typeSelect.value = 'Student';
+      typeSelect.disabled = true;
+      sectionSelect.disabled = false;
+    } else {
+      typeSelect.disabled = false;
+      if (typeSelect.value === 'Student') typeSelect.value = '';
+      sectionSelect.disabled = true;
+    }
+  }, 0);
+});
 
 async function exportBorrowersCSV(){
   try{
@@ -1141,8 +1274,11 @@ function onBorrowerSelectChange(){
   if(document.getElementById('borrowerSelect').value){
     document.getElementById('borrowerNameInput').value='';
     document.getElementById('borrowerIdNumberInput').value='';
+    document.getElementById('borrowerCourseInput').value='';
+    onBorrowCourseChange();
   }
 }
+
 function onBorrowerNameInput(){
   const name=document.getElementById('borrowerNameInput').value.trim();
   const idnum=document.getElementById('borrowerIdNumberInput').value.trim();
@@ -1471,6 +1607,54 @@ function clearBorrowToolId(){
    Borrow body: { type:'borrow', tool_code, borrower_id, due_date, notes }  → { success, data:{ id, txn_id, tool_name } }
    Return body: { type:'return', tool_code, condition, notes }             → { success, data:{ id, txn_id, tool_name, returned_by } }
 ─────────────────────────────────────────────────────────── */
+
+let borrowEnrollmentRows = [];
+
+async function loadBorrowCourseOptions() {
+  const courseSel = document.getElementById('borrowerCourseInput');
+  if (!courseSel) return;
+  const prev = courseSel.value;
+  try {
+    const res = await apiFetch(`${API}/borrower_enrollments.php`);
+    borrowEnrollmentRows = res.data || [];
+    const courses = [...new Set(borrowEnrollmentRows.map(r => r.course).filter(Boolean))];
+    courseSel.innerHTML = '<option value="">None</option>' +
+      courses.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    courseSel.value = courses.includes(prev) ? prev : '';
+    onBorrowCourseChange();
+  } catch (_) {}
+}
+
+function onBorrowCourseChange() {
+  const courseSel  = document.getElementById('borrowerCourseInput');
+  const sectionSel = document.getElementById('borrowerSectionInput');
+  const typeSel    = document.getElementById('borrowerTypeInput');
+  const course = courseSel.value;
+
+  // Sections from the database for this course (one per section id)
+  const seen = new Set();
+  let html = '<option value="">Select section</option>';
+  borrowEnrollmentRows.forEach(r => {
+    if (r.course !== course || seen.has(r.cms_section_id)) return;
+    seen.add(r.cms_section_id);
+    html += `<option value="${r.cms_section_id}" data-name="${escapeHtml(r.section_name)}">${escapeHtml(r.section_name)}</option>`;
+  });
+  sectionSel.innerHTML = html;
+
+  // FPST gets the extra 1-A to 2-E sections
+  syncCustomSections('borrowerCourseInput', 'borrowerSectionInput');
+
+  if (course) {
+    typeSel.value = 'Student';
+    typeSel.disabled = true;
+    sectionSel.disabled = false;
+  } else {
+    typeSel.disabled = false;
+    if (typeSel.value === 'Student') typeSel.value = '';
+    sectionSel.disabled = true;
+  }
+}
+
 async function handleBorrow(){
   const toolCode=document.getElementById('borrowToolId').value.trim();
   const borrowerId=document.getElementById('borrowerSelect').value;
@@ -1491,22 +1675,28 @@ async function handleBorrow(){
     let finalBorrowerId=borrowerId;
     let displayName=borrowerText.split('—')[0].trim();
 
-    // New borrower typed in → create the record first, then use its id
     if(!finalBorrowerId){
-    const borrowerType=document.getElementById('borrowerTypeInput').value || 'Guest';
-    // Same normalization as saveBorrower() — strip dashes/spaces so a
-    // real ID like 2024-00123 isn't wrongly rejected.
-    const cleanIdNumber=borrowerIdNumber.replace(/[\s-]/g,'');
-    if(borrowerType==='Student' && !/^\d{8,10}$/.test(cleanIdNumber)){showToast('Student ID must be 8 to 10 digits (numbers only).','error');setLoading('borrowSubmitBtn',false);return;}
-    const newBorrower=await apiFetch(`${API}/borrowers.php`,{method:'POST',body:JSON.stringify({
-    full_name:borrowerName,
-    id_number:cleanIdNumber,
-    type:borrowerType
-      
-  })});
+      const borrowerType=document.getElementById('borrowerTypeInput').value || 'Student';
+      const cleanIdNumber=borrowerIdNumber.replace(/[\s-]/g,'');
+      if(borrowerType==='Student' && !/^\d{8,10}$/.test(cleanIdNumber)){showToast('Student ID must be 8 to 10 digits (numbers only).','error');setLoading('borrowSubmitBtn',false);return;}
+
+      const borrowerCourse=document.getElementById('borrowerCourseInput').value;
+      const sectionSel=document.getElementById('borrowerSectionInput');
+      const sectionVal=sectionSel.value;
+      const sectionName=sectionSel.selectedOptions[0]?.dataset.name || sectionVal;
+      if(borrowerCourse && !sectionVal){showToast('Please select a section.','error');setLoading('borrowSubmitBtn',false);return;}
+
+      const newBody={full_name:borrowerName,id_number:cleanIdNumber,type:borrowerType};
+      if(borrowerCourse){
+        newBody.course=borrowerCourse;
+        newBody.section_name=sectionName;
+        if(/^\d+$/.test(sectionVal)) newBody.cms_section_id=parseInt(sectionVal);
+      }
+
+      const newBorrower=await apiFetch(`${API}/borrowers.php`,{method:'POST',body:JSON.stringify(newBody)});
       finalBorrowerId=newBorrower.data.id;
       displayName=borrowerName;
-      loadBorrowerSelect(); // refresh dropdown so they appear next time
+      loadBorrowerSelect();
     }
 
     const res=await apiFetch(`${API}/transactions.php`,{method:'POST',body:JSON.stringify({type:'borrow',tool_code:toolCode,borrower_id:parseInt(finalBorrowerId),due_date:due,notes,qty})});
@@ -1519,7 +1709,8 @@ async function handleBorrow(){
     document.getElementById('borrowerSearchInput').value='';
     document.getElementById('borrowerNameInput').value='';
     document.getElementById('borrowerIdNumberInput').value='';
-    document.getElementById('borrowerTypeInput').value='';
+        document.getElementById('borrowerCourseInput').value='';
+    onBorrowCourseChange();
     document.getElementById('borrowNotes').value='';
     loadToolsForBorrow(); // availability just changed — refresh the dropdown
   }catch(_){}finally{setLoading('borrowSubmitBtn',false);}
@@ -1686,33 +1877,64 @@ async function loadReports(){
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:20}}},scales:{y:{beginAtZero:true,ticks:{precision:0},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false}}}}
     });
 
-    if(categoryChart)categoryChart.destroy();
-    const catColors=[CHART_COLORS.purple,CHART_COLORS.violet,CHART_COLORS.purpleLight,CHART_COLORS.amber,CHART_COLORS.green,CHART_COLORS.red||'#ef4444',CHART_COLORS.blue||'#3b82f6'];
-    categoryChart=new Chart(document.getElementById('categoryChart').getContext('2d'),{
-      type:'doughnut',
-      data:{labels:cd.labels||[],datasets:[{data:cd.values||[],backgroundColor:catColors,borderWidth:0,borderRadius:4}]},
-      // Legend is replaced by the always-visible quantity list below
-      // (categoryLegend) — that's the actual fix for "shouldn't need
-      // to hover to see how many of each category," so Chart.js's
-      // own built-in legend (which only shows names, not counts) is
-      // turned off here instead of duplicating it.
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:true}},cutout:'70%'}
-    });
-    // Always-visible quantity list — the actual answer to "I shouldn't
-    // need to hover to see how many of each category the inventory has."
-    const legendEl=document.getElementById('categoryLegend');
-    const labels=cd.labels||[], values=cd.values||[];
-    if(!labels.length){
-      legendEl.innerHTML='<span style="color:var(--gray-400);font-size:13px">No tools yet.</span>';
-    }else{
-      legendEl.innerHTML=labels.map((lab,i)=>
-        `<span style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray-700,#374151)">
-          <span style="width:10px;height:10px;border-radius:50%;background:${catColors[i%catColors.length]};display:inline-block"></span>
-          ${lab} <strong>${values[i]}</strong>
-        </span>`
-      ).join('');
+if (categoryChart) categoryChart.destroy();
+
+const catColors = [CHART_COLORS.purple, CHART_COLORS.violet, CHART_COLORS.purpleLight, CHART_COLORS.amber, CHART_COLORS.green, CHART_COLORS.red || '#ef4444', CHART_COLORS.blue || '#3b82f6'];
+
+const pluginsToUse = [];
+if (typeof ChartDataLabels !== 'undefined') {
+  pluginsToUse.push(ChartDataLabels);
+}
+
+categoryChart = new Chart(document.getElementById('categoryChart').getContext('2d'), {
+  type: 'doughnut',
+  data: {
+    labels: cd.labels || [],
+    datasets: [{
+      data: cd.values || [],
+      backgroundColor: catColors,
+      borderWidth: 0,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '65%',
+    layout: {
+      padding: { top: 50, bottom: 50, left: 90, right: 90 }   // room for the outside labels
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { enabled: true },
+      datalabels: {
+        anchor: 'end',      // start at the outer edge of the slice
+        align: 'end',       // push the text outward, away from the ring
+        offset: 8,
+        clamp: true,        // keep labels inside the canvas
+        clip: false,
+        textAlign: 'center',
+        color: (ctx) => catColors[ctx.dataIndex % catColors.length],  // same color as its slice
+        font: { family: 'inherit', weight: '600', size: 13 },
+        display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
+        formatter: (value, ctx) => {
+          const label = ctx.chart.data.labels[ctx.dataIndex];
+          return [label, value + ' pcs'];   // two lines: name, then count
+        }
+      }
     }
-  }catch(_){}
+  },
+  plugins: pluginsToUse
+});
+
+    const legendEl = document.getElementById('categoryLegend');
+    if (legendEl) {
+      legendEl.innerHTML = '';
+    }
+
+  } catch (err) {
+    console.error("Chart render error:", err);
+  }
 }
 
 let currentReportType = null;

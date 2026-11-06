@@ -1,0 +1,37 @@
+/backups/
+*.sql.bak
+.DS_Store
+Thumbs.db
+_incoming/
+backup/run-hidden.vbs
+
+/pwa/tooltrack-local-ca.cer
+/pwa/https-info.json
+# Database backups
+*.sql
+*.sql.gz
+*.zip
+/backups/
+
+# Sensitive files
+.env
+.env.*
+
+# Temporary files
+*.log
+*.tmp
+/cache/
+/tests/ui/consistency-runner.html
+/tests/ui/inventory-browser-results.html
+/tests/ui/chrome-test-profile*/
+
+# Local PHP session artifacts
+/sess_*
+
+# Generated browser profiles (existing runtime data is retained)
+/tests/.borrow-session-browser-chrome/
+/tests/.grouped-report-shared/
+/tests/ui/.chrome-incident/
+/tests/ui/.chrome-incident-cdp/
+/tests/ui/.chrome-layout/
+/tests/ui/.chrome-mobile-layout/
