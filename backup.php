@@ -1,137 +1,39 @@
 <?php
-/**
- * ToolTrack — Automatic Database Backup
- * Place this file in your project root (e.g. C:/xampp/htdocs/tooltrack/)
- *
- * Can be triggered:
- *   1. Via browser: http://localhost/tooltrack/backup.php
- *   2. Via bat file / Task Scheduler: php backup.php
- */
-
-// ─── CONFIGURATION ──────────────────────────────────────────
-define('DB_HOST',     'localhost');
-define('DB_USER',     'root');
-define('DB_PASS',     '');           // your MySQL password (blank by default in XAMPP)
-define('DB_NAME',     'tooltrack_db');
-define('MYSQLDUMP',   'C:/xampp/mysql/bin/mysqldump.exe');
-
-// Primary backup folder — change to your USB drive letter
-// e.g.  'E:/ToolTrack_Backups'  or  'F:/Backups/ToolTrack'
-define('BACKUP_DIR',  'E:/ToolTrack_Backups');
-
-// Also keep a local copy inside the project? (true/false)
-define('LOCAL_COPY',  true);
-define('LOCAL_DIR',   __DIR__ . '/backups');
-
-// How many backup files to keep per location (older ones auto-deleted)
-define('MAX_BACKUPS', 30);
-// ─────────────────────────────────────────────────────────────
-
-$isCLI = (php_sapi_name() === 'cli');
-
-// ── Auth (skip for CLI/Task Scheduler runs — those aren't over HTTP) ──
-// Deliberately does NOT include api/config.php here: that file also
-// defines DB_HOST/DB_NAME/DB_USER/DB_PASS, which would collide with
-// this file's own define()s below (fatal "already defined" error).
-// 'Admin' below must match ROLE_ADMIN in api/config.php.
-if (!$isCLI) {
-    if (session_status() === PHP_SESSION_NONE) session_start();
-    if (empty($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'Admin') {
-        http_response_code(403);
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'message' => 'Admin login required.']);
-        exit;
+// CLI-only entry point; web callers must use the authenticated API.
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+require_once __DIR__ . '/api/bootstrap.php';
+require_once __DIR__ . '/api/backup_lib.php';
+$service=null;
+try {
+    $command=$argv[1] ?? 'backup';
+    if (!in_array($command,['backup','status','test-latest','initialize','recover-safety'],true)) throw new RuntimeException('Usage: php backup.php [backup|status|test-latest|initialize|recover-safety]');
+    if ($command === 'initialize') {
+        $dir=ttBackupPrivate();
+        if (is_file($dir.'/initialized')) { echo "Backup storage is already initialized. Existing key and settings preserved.\n";exit(0); }
+        if (!is_dir($dir) || !is_dir($dir.'/work')) throw new RuntimeException('Run backups/setup-backups.ps1 to create the protected folders first.');
+        $folder=dirname(__DIR__,2).'/ToolTrackBackups';
+        if (!is_dir($folder) && !mkdir($folder,0700,true)) throw new RuntimeException('Cannot create backup destination.');
+        if (!is_file($dir.'/key.json')) file_put_contents($dir.'/key.json',json_encode(['key'=>base64_encode(random_bytes(32))],JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR),LOCK_EX);
+        if (!is_file($dir.'/config.json')) file_put_contents($dir.'/config.json',json_encode(['folder'=>$folder],JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR),LOCK_EX);
+        foreach(['history.jsonl','operation.lock','application.lock'] as $name) { $f=fopen($dir.'/'.$name,'c+b');if(!$f)throw new RuntimeException('Cannot initialize private files.');fclose($f); }
+        file_put_contents($dir.'/initialized',date(DATE_ATOM),LOCK_EX);
+        echo "Protected backup storage initialized. Default destination: $folder\n";exit(0);
     }
-}
-
-function respond($ok, $msg, $data = []) {
-    global $isCLI;
-    if ($isCLI) {
-        echo ($ok ? "[OK] " : "[ERROR] ") . $msg . PHP_EOL;
-        foreach ($data as $k => $v) echo "  $k: $v" . PHP_EOL;
+    $service=new ToolTrackBackup();$lock=$service->lock();
+    if ($command==='status') $result=$service->status();
+    elseif ($command==='recover-safety') {
+        $confirmation=str_starts_with($argv[2]??'','--confirm=')?substr($argv[2],10):'';
+        $result=$service->recoverSafety($confirmation);
+    }
+    elseif ($command==='test-latest') {
+        $last=$service->status()['last_backup'];if(!$last)throw new RuntimeException('Create a backup first.');
+        $r=$service->find($last['id']);$result=$service->testRestore($service->decrypt($r['path']));
     } else {
-        header('Content-Type: application/json');
-        echo json_encode(array_merge(['success' => $ok, 'message' => $msg], $data));
+        if(is_file(ttBackupPrivate().'/recovery-required.json'))throw new RuntimeException('A restore requires manual recovery.');
+        $result=$service->backup('scheduled_or_cli');unset($result['path']);
     }
-    exit($ok ? 0 : 1);
+    echo json_encode(['success'=>true,'data'=>$result],JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL;
+} catch(Throwable $e) {
+    if($service){try{$service->log('cli','failed',$e->getMessage());}catch(Throwable $ignored){}}
+    fwrite(STDERR,'Backup error: '.$e->getMessage().PHP_EOL);exit(1);
 }
-
-// ── 1. Check mysqldump exists ────────────────────────────────
-if (!file_exists(MYSQLDUMP)) {
-    respond(false, 'mysqldump not found at: ' . MYSQLDUMP .
-            '. Edit MYSQLDUMP path in backup.php.');
-}
-
-// ── 2. Ensure backup directories exist ──────────────────────
-$dirs = [BACKUP_DIR];
-if (LOCAL_COPY) $dirs[] = LOCAL_DIR;
-
-foreach ($dirs as $dir) {
-    if (!is_dir($dir)) {
-        if (!@mkdir($dir, 0777, true)) {
-            respond(false, "Cannot create backup folder: $dir — " .
-                    "Is the USB drive plugged in? Is the path correct?");
-        }
-    }
-    if (!is_writable($dir)) {
-        respond(false, "Backup folder not writable: $dir");
-    }
-}
-
-// ── 3. Generate filename ─────────────────────────────────────
-$timestamp = date('Y-m-d_H-i-s');
-$filename  = DB_NAME . '_backup_' . $timestamp . '.sql';
-
-// ── 4. Run mysqldump ─────────────────────────────────────────
-$usbPath   = BACKUP_DIR . '/' . $filename;
-$password  = DB_PASS !== '' ? '--password=' . escapeshellarg(DB_PASS) : '';
-$cmd = sprintf(
-    '"%s" --host=%s --user=%s %s --single-transaction --routines --triggers %s > "%s" 2>&1',
-    MYSQLDUMP,
-    DB_HOST,
-    DB_USER,
-    $password,
-    DB_NAME,
-    $usbPath
-);
-
-exec($cmd, $output, $exitCode);
-
-if ($exitCode !== 0 || !file_exists($usbPath) || filesize($usbPath) === 0) {
-    @unlink($usbPath);
-    respond(false, 'mysqldump failed.', ['output' => implode(' | ', $output)]);
-}
-
-$size = round(filesize($usbPath) / 1024, 1) . ' KB';
-$saved = [$usbPath];
-
-// ── 5. Optional local copy ───────────────────────────────────
-if (LOCAL_COPY) {
-    $localPath = LOCAL_DIR . '/' . $filename;
-    copy($usbPath, $localPath);
-    $saved[] = $localPath;
-}
-
-// ── 6. Prune old backups (keep MAX_BACKUPS newest) ───────────
-foreach ($dirs as $dir) {
-    $files = glob($dir . '/' . DB_NAME . '_backup_*.sql');
-    if ($files && count($files) > MAX_BACKUPS) {
-        usort($files, fn($a,$b) => filemtime($a) - filemtime($b));
-        $toDelete = array_slice($files, 0, count($files) - MAX_BACKUPS);
-        foreach ($toDelete as $f) @unlink($f);
-    }
-}
-
-// ── 7. Log the backup ────────────────────────────────────────
-$logLine = date('Y-m-d H:i:s') . " | SUCCESS | $filename | $size\n";
-file_put_contents(BACKUP_DIR . '/backup_log.txt', $logLine, FILE_APPEND | LOCK_EX);
-if (LOCAL_COPY) {
-    file_put_contents(LOCAL_DIR . '/backup_log.txt', $logLine, FILE_APPEND | LOCK_EX);
-}
-
-respond(true, "Backup successful: $filename ($size)", [
-    'filename'  => $filename,
-    'size'      => $size,
-    'saved_to'  => implode(' + ', $saved),
-    'timestamp' => $timestamp,
-]);

@@ -1,0 +1,82 @@
+@media(min-width:1201px){
+ body:has(#returnPage.active){background:#f9fafb;color:#374151}
+ body:has(#returnPage.active) .main-content,body:has(#returnPage.active) .page-content{background:#f9fafb}
+ body:has(#returnPage.active) .header{height:64px;min-height:64px;background:#ffffff;border-color:#f0ebf7;box-shadow:none}
+ body:has(#returnPage.active) .page-title,body:has(#returnPage.active) .header .search-box,body:has(#returnPage.active) .header .date-display{display:none}
+ body:has(#returnPage.active) .breadcrumb,body:has(#returnPage.active) .breadcrumb a{color:#6b7280}
+ body:has(#returnPage.active) .breadcrumb span{color:#1f2937}
+ body:has(#returnPage.active) .header-btn{background:#f0ebf7;color:#4b5563;border-color:#e3d7f7}
+ #returnPage{--primary:#6028a8;--primary-light:#7c3aed;--primary-bg:#f5f3ff;color:#374151}
+ #returnPage>.rp-note{display:none}
+ #returnPage>.circulation-tabs{display:flex;justify-content:flex-end;margin:0 0 14px;gap:8px}
+ #returnPage>.circulation-tabs [aria-pressed="true"]{display:none}
+ #returnPage #rtHome{display:block;margin:0 0 18px;padding:0;background:transparent}
+ #returnPage #rtHome[hidden],#returnPage #rtWorkspace[hidden]{display:none}
+ #returnPage #rtHome .bw-stats{display:flex;justify-content:flex-end;gap:22px}
+ #returnPage #rtHome .bw-stat{display:flex;flex-direction:row;align-items:center;gap:7px;border:0;border-radius:0;padding:0;background:transparent;font-size:12px}
+ #returnPage #rtHome .bw-stat b{font-size:13px;color:#1f2937}
+ #returnPage #rtHome .bw-stat span{font-size:11px;color:#6b7280}
+ #returnPage #rtHome .bw-stat i{font-size:12px;margin:0;color:#6028a8}
+ #returnPage #rtHome .bw-stat.ok i{color:#10b981}
+ #returnPage #rtHome .bw-stat.late i{color:#ef4444}
+ #returnPage #rtWorkspace{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:20px;max-width:1500px;margin:auto;align-items:start}
+ #returnPage #rtWorkspace .return-layout{display:contents}
+ #returnPage #rtBorrowerCard{grid-column:1/span 7;grid-row:1}
+ #returnPage #returnAllCard{grid-column:1/span 7;grid-row:2}
+ #returnPage .return-summary{grid-column:8/-1;grid-row:1/span 2;position:sticky;top:84px;bottom:auto;margin:0;padding:20px;min-width:0;border:1px solid #f0ebf7;border-radius:16px;background:#fff;box-shadow:0 12px 30px #0001}
+ #returnPage .br-card{background:#fff;border:1px solid #f0ebf7;border-radius:16px;box-shadow:none;overflow:visible;position:relative}
+ #returnPage .br-card-header{padding:20px 20px 14px;border-color:#f0ebf7;min-height:65px}
+ #returnPage .br-card-header-icon{display:none}
+ #returnPage .br-card-header h3{color:#6028a8;font-size:11px;text-transform:uppercase;letter-spacing:.07em;line-height:1.6}
+ #returnPage .br-card-header h3 small{display:block;margin:5px 0 0;color:#6b7280;font-size:10px;text-transform:none;letter-spacing:0}
+ #returnPage #rtBorrowerCard .br-card-header{padding-right:170px}
+ #returnPage .ws-step{display:inline-grid;place-items:center;width:22px;height:22px;background:#6028a8;color:#fff;font-size:11px;border-radius:6px;margin-right:6px}
+ #returnPage .br-card-body{padding:16px 20px 20px}
+ #returnPage .form-input-full{min-height:40px;padding:10px 12px;margin-bottom:0;border:1px solid #e3d7f7;border-radius:10px;background:#f9fafb;font-size:12px;color:#1f2937}
+ #returnPage .field-label{font-size:10px;margin:0 0 6px;color:#6b7280}
+ #returnPage input:focus-visible,#returnPage button:focus-visible{outline:2px solid #7c3aed;outline-offset:2px}
+ #returnPage .scanner-zone{border:0;background:transparent;padding:0;margin:8px 0}
+ #returnPage .scanner-zone-label{display:none}
+ #returnPage #returnIdStartBtn{position:absolute;top:17px;right:20px;width:auto;background:#f5f3ff;color:#6028a8;border:1px solid #e3d7f7;border-radius:8px;font-size:11px;padding:7px 10px}
+ #returnPage #returnIdStartBtn:hover{background:#7c3aed;color:#fff}
+ #returnPage .return-borrower-details h4{font-size:11px;color:#6b7280;margin:12px 0 8px}
+ #returnPage .ra-student{border-color:#e3d7f7;background:#f5f3ff;border-radius:10px;margin:0;padding:12px}
+ #returnPage .ra-student b{font-size:13px}
+ #returnPage .ra-student small,#returnPage .ra-hint{font-size:11px}
+ #returnPage .ra-search{gap:10px}
+ #returnPage .card-btn{font-size:11px;border-radius:8px}
+ #returnPage .card-btn.primary{background:#6028a8}
+ #returnPage .card-btn.primary:hover{background:#7c3aed}
+ #returnPage .ra-mode{margin:0 0 12px}
+ #returnPage .ra-mode-btn{font-size:11px;padding:8px 12px}
+ #returnPage .ra-banner,#returnPage .ra-legend{font-size:11px;line-height:1.6}
+ #returnPage #returnAllCard .table-container{overflow-x:auto;max-width:100%}
+ #returnPage .ra-table{font-size:11px;min-width:620px}
+ #returnPage .ra-table th,#returnPage .ra-table td{padding:9px 6px;font-size:11px}
+ #returnPage .ra-table th{white-space:normal}
+ #returnPage .ra-table input.ra-q{width:44px;min-height:32px;font-size:12px;border-radius:7px}
+ #returnPage .ra-extra,#returnPage .ra-missing{gap:14px;margin-top:16px}
+ #returnPage .return-summary-main{display:flex;flex-direction:column;align-items:stretch;gap:14px}
+ #returnPage .return-summary h3{color:#1f2937;font-size:14px;margin:0 0 8px}
+ #returnPage .return-summary .rp-note{font-size:11px;color:#6b7280}
+ #returnPage .rt-total{border-top:1px solid #f0ebf7;padding-top:12px;font-size:12px}
+ #returnPage .rt-total-line{font-size:12px}
+ #returnPage #raSubmitBtn{width:100%;min-width:0;margin:0;min-height:44px;padding:13px;background:#6028a8;color:#fff;font-size:12px;border-radius:10px}
+ #returnPage #raSubmitBtn:hover{background:#7c3aed}
+ #returnPage #raSubmitBtn:disabled{opacity:.4;cursor:not-allowed}
+ #returnPage .return-review-details{margin:14px 0 0;padding-top:14px;border-color:#f0ebf7;font-size:11px}
+ #returnPage .return-review-details .rt-review{max-height:360px;overflow:auto;padding-bottom:0}
+ #returnPage .rt-review h4{display:none}
+ #returnPage .rt-review-counts{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ #returnPage .rt-review-counts>span{background:#f5f3ff;border:1px solid #e3d7f7;color:#6028a8;font-size:11px}
+ #returnPage .rt-review li{background:#f9fafb;border:1px solid #f0ebf7;border-radius:10px;padding:12px;margin-bottom:8px;font-size:12px}
+ #returnPage .rt-review li span,#returnPage .rt-review li small,#returnPage .rt-review p{font-size:11px;color:#6b7280;overflow-wrap:anywhere}
+ #returnPage .empty-state{font-size:12px;color:#6b7280;padding:28px 12px}
+}
+@media(min-width:1201px){
+ #returnPage #rtWorkspace .br-card{border:1px solid #f0ebf7;border-radius:16px;box-shadow:none}
+ #returnPage #returnAllCard .ra-table{min-width:0}
+ #returnPage #rtToolsHeading small{font-size:10px}
+ #returnPage .return-borrower-details{margin-top:14px;padding-top:12px}
+ #returnPage .return-borrower-details h4{font-size:11px}
+}

@@ -1,0 +1,111 @@
+/* Light purple checkout workspace. Loaded after the shared and mobile styles. */
+.ws-header-stats{display:none}
+#borrowPage .ws-verification{display:flex;justify-content:space-between;gap:12px;margin:12px 0;font-size:12px}
+#borrowPage .ws-verification b{color:#b45309}
+#borrowPage .ws-verification b.is-selected{color:#10b981}
+#borrowPage .ws-step{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:#6028a8;color:#fff;font-size:11px;flex:none}
+@media(min-width:1201px){
+ body.borrow-workspace{background:#f9fafb;color:#374151}
+ body.borrow-workspace .main-content,body.borrow-workspace .page-content{background:#f9fafb}
+ body.borrow-workspace .header{height:64px;min-height:64px;background:#ffffff;border-color:#f0ebf7;box-shadow:none}
+ body.borrow-workspace .page-title,body.borrow-workspace .header .search-box,body.borrow-workspace .header .date-display{display:none}
+ body.borrow-workspace .breadcrumb,body.borrow-workspace .breadcrumb a{color:#6b7280}
+ body.borrow-workspace .breadcrumb span{color:#1f2937}
+ body.borrow-workspace .header-btn{background:#f0ebf7;color:#4b5563;border-color:#e3d7f7}
+ body.borrow-workspace .ws-header-stats{display:flex;align-items:center;gap:20px;font-size:12px;color:#6b7280;margin-right:16px;padding-right:24px;border-right:1px solid #e3d7f7}
+ .ws-header-stats b{color:#1f2937;margin-left:5px}
+ .ws-header-stats>span::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;background:#7c3aed}
+ .ws-header-stats>.ws-available::before{background:#10b981}.ws-header-stats>.ws-overdue::before{background:#ef4444}
+ #borrowPage{--gray-900:#1f2937;--gray-800:#374151;--gray-700:#4b5563;--gray-600:#6b7280;--gray-500:#6b7280;--gray-200:#e3d7f7;--gray-100:#f0ebf7;--primary:#7c3aed;color:#374151;color-scheme:light}
+ #borrowPage .rp-note,#borrowPage .br-form>.br-card-header{display:none}
+ #borrowPage .br-layout{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:20px;align-items:start;max-width:1500px;margin:auto}
+ #borrowPage .br-form{display:block;grid-column:span 7;grid-row:auto;min-width:0;background:transparent;border:0;box-shadow:none;overflow:visible}
+ #borrowPage .br-form>.br-card-body{display:flex;flex-direction:column;gap:18px;padding:0}
+ #borrowPage .br-sec{display:block;position:relative;grid-column:auto;grid-row:auto;align-self:auto;padding:20px;margin:0;background:#ffffff;border:1px solid #f0ebf7;border-radius:16px;box-shadow:none;min-width:0}
+ #borrowPage #brSecBorrower,#borrowPage #brSecTool{grid-column:auto;grid-row:auto;align-self:auto}
+ #borrowPage .br-sec-title{display:flex;align-items:center;gap:9px;color:#6028a8;font-size:11px;text-transform:uppercase;letter-spacing:.07em;margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid #f0ebf7;min-height:35px}
+ #borrowPage .form-input-full{background:#f9fafb;color:#1f2937;border:1px solid #e3d7f7;border-radius:10px;min-height:40px;font-size:12px;margin-bottom:0}
+ #borrowPage .form-input-full::placeholder{color:#9ca3af}
+ #borrowPage input:focus{outline:2px solid #7c3aed;outline-offset:1px}
+ #borrowPage .field-label{font-size:10px;color:#6b7280;margin:12px 0 6px}
+ #borrowPage .scanner-zone{background:transparent;border:0;padding:0;margin:0 0 12px;border-radius:0}
+ #borrowPage .scanner-zone-label,#borrowPage .or-divider{display:none}
+ #borrowPage .scanner-controls{justify-content:flex-end;gap:8px;margin:0 0 10px}
+ #borrowPage .btn-scan,#borrowPage .btn-upload{background:#f5f3ff;color:#6028a8;border:1px solid #e3d7f7;font-size:11px;padding:7px 10px;min-height:32px;border-radius:8px}
+ #borrowPage .btn-scan:hover,#borrowPage .btn-upload:hover{background:#7c3aed;color:#fff}
+ #borrowPage #idScanInput{min-height:34px;font-size:11px}
+ #borrowPage .scan-status:empty,#borrowPage .br-hint:empty{display:none}
+ #borrowPage .bt-addrow{display:flex;gap:12px;margin-top:12px}
+ #borrowPage .br-qty{display:flex;align-items:center;background:#f9fafb;border:1px solid #e3d7f7;border-radius:10px;padding:4px;max-width:150px}
+ #borrowPage .br-qty input{border:0;min-height:30px;width:55px;text-align:center}
+ #borrowPage .br-qty-btn{background:#f0ebf7;color:#374151;border:0;width:28px;height:28px}
+ #borrowPage .bt-add{flex:1;background:#f0ebf7;border:1px solid #e3d7f7;color:#374151;font-size:12px;border-radius:10px}
+ #borrowPage .bt-add:hover{background:#6028a8}
+ #borrowPage #brSecLoan{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px;grid-column:auto;grid-row:auto}
+ #borrowPage #brSecLoan>.br-sec-title{grid-column:1/-1}
+ #borrowPage #brSecLoan>label[for=borrowDueDate]{grid-column:1;grid-row:2}
+ #borrowPage #borrowDueDate{grid-column:1;grid-row:3}
+ #borrowPage #brSecLoan>label[for=borrowDueTime]{grid-column:2;grid-row:2}
+ #borrowPage #borrowDueTime{grid-column:2;grid-row:3}
+ #borrowPage #brSecLoan>label[for=borrowNotes]{grid-column:1/-1;grid-row:4}
+ #borrowPage #borrowNotes{grid-column:1/-1;grid-row:5}
+ #borrowPage #brSecLoan>label[for=borrowOverrideReason],#borrowPage #borrowOverrideReason{grid-column:1/-1}
+ #borrowPage #borrowCartCard{grid-column:8/-1;grid-row:1;position:sticky;top:84px;align-self:start;padding:0;background:#ffffff;border:1px solid #f0ebf7;border-radius:16px;overflow:visible;box-shadow:0 12px 30px #0002}
+ #borrowPage #borrowCartCard .br-card-header{padding:20px;border-color:#f0ebf7;gap:10px}
+ #borrowPage #borrowCartCard h3{font-size:14px;color:#1f2937}
+ #borrowPage #borrowCartCard .br-card-header-icon{display:none}
+ #borrowPage #borrowCartCard .br-card-body{padding:16px 20px 20px;min-height:0}
+ #borrowPage .bt-count{background:#f5f3ff;border:1px solid #e3d7f7;color:#6028a8;font-size:10px}
+ #borrowPage #btCartList{max-height:360px;overflow:auto;min-height:140px}
+ #borrowPage .bt-line{grid-template-columns:30px minmax(0,1fr) auto;gap:8px;padding:12px;margin-bottom:8px;border:1px solid #f0ebf7;background:#f9fafb;border-radius:10px}
+ #borrowPage .bt-ico{width:30px;height:30px;background:#f5f3ff;color:#7c3aed;border-radius:8px;font-size:13px}
+ #borrowPage .bt-name{font-size:12px;color:#374151;overflow-wrap:anywhere}
+ #borrowPage .bt-meta{font-size:10px;color:#6b7280;overflow-wrap:anywhere}
+ #borrowPage .bt-ctrl{gap:3px;flex-wrap:nowrap}
+ #borrowPage .bt-step{display:none}
+ #borrowPage .bt-qty{width:38px;background:#ffffff;color:#1f2937;border:1px solid #e3d7f7;font-size:11px}
+ #borrowPage .bt-remove{color:#6b7280;background:transparent;border:0}
+ #borrowPage .bt-remove:hover{color:#ef4444}
+ #borrowPage .bt-total{border-color:#f0ebf7;color:#6b7280;font-size:12px;padding-top:16px}
+ #borrowPage .bt-total b{color:#1f2937}
+ #borrowPage .ws-verification{color:#6b7280;font-size:11px}
+ #borrowPage .ws-verification b{color:#f59e0b}
+ #borrowPage .ws-verification b.is-selected{color:#10b981}
+ #borrowPage .br-bar{display:flex;flex-direction:column;align-items:stretch;position:static;margin:14px 0 0;padding:14px 0 0;border:0;border-top:1px solid #f0ebf7;border-radius:0;background:transparent;box-shadow:none;gap:10px}
+ #borrowPage .br-bar-sum{display:flex;flex-direction:column;gap:4px}
+ #borrowPage .br-bar-sum b{color:#4b5563;font-size:11px}
+ #borrowPage .br-bar-sum small{color:#6b7280;font-size:11px}
+ #borrowPage .br-bar .btn-primary-full{width:100%;min-width:0;background:#6028a8;color:#fff;font-size:12px;padding:13px;border-radius:10px;min-height:44px;margin:0}
+ #borrowPage .br-bar .btn-primary-full:hover{background:#7c3aed}
+ #borrowPage .br-bar .btn-primary-full:disabled{opacity:.4;cursor:not-allowed}
+ #borrowPage .br-dd,#borrowPage .br-tool,#borrowPage .br-bcard{background:#ffffff;color:#374151;border-color:#e3d7f7}
+ #borrowPage .br-dd button{color:#374151}
+ #borrowPage .br-dd button:hover{background:#f0ebf7}
+ #borrowPage .empty-state{color:#6b7280;padding:28px 12px;font-size:12px}
+}
+.ws-cart-icon{width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:5px}
+@media(min-width:1201px){
+ #borrowPage .bt-del{color:#6b7280;background:transparent;border:0}
+ #borrowPage .bt-del:hover{color:#ef4444}
+ #borrowPage #borrowStartBtn .br-wide-label{font-size:0}
+ #borrowPage #borrowStartBtn .br-wide-label::after{content:'Scan Tool QR';font-size:11px}
+ #borrowPage #brSecBorrower:has(#idStartBtn:not([style*="none"])) .br-sec-title,#borrowPage #brSecTool:has(#borrowStartBtn:not([style*="none"])) .br-sec-title{padding-right:140px}
+}
+@media(min-width:1201px){
+ #borrowPage #idStartBtn,#borrowPage #borrowStartBtn{position:absolute;top:20px;right:20px;min-height:29px}
+ #borrowPage .scanner-zone{position:static}
+ #borrowPage .br-sec-title{padding-right:150px}
+ #borrowPage #brSecLoan .br-sec-title{padding-right:0}
+ #borrowPage .br-id-hardware{color:#6b7280;font-size:11px;margin-top:8px}
+}
+@media(min-width:1201px){
+ #borrowPage .bt-add:hover{color:#fff}
+}
+/* One switch between checkout and the existing active-loan table. */
+#borrowPage .bw-workspace-views{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+#borrowPage .bw-workspace-views .card-btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:9px 14px;border:1px solid #e3d7f7;border-radius:10px;background:#fff;color:#6028a8;font-size:12px}
+#borrowPage .bw-workspace-views [aria-pressed="true"]{background:#6028a8;border-color:#6028a8;color:#fff}
+#borrowPage .bw-workspace-views .card-btn:hover{background:#f5f3ff;color:#6028a8}
+#borrowPage .bw-workspace-views .card-btn:focus-visible{outline:2px solid #7c3aed;outline-offset:2px}
+#borrowPage #circulationLoanHistory .card{border:1px solid #e3d7f7;border-radius:16px;overflow:hidden}
+@media(max-width:600px){#borrowPage .bw-workspace-views .card-btn{flex:1;justify-content:center;font-size:11px}}

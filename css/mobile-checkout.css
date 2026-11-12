@@ -1,0 +1,73 @@
+/* Checkout presentation; all transaction and scanner handlers remain in borrow.js. */
+.br-phone-heading{display:none}
+.br-phone-label{display:none}
+.br-views-menu>summary,.br-id-hardware>summary{display:none}
+.br-id-hardware{display:contents}
+@media(max-width:767px){
+ #borrowPage .br-wide-label{display:none}
+ #borrowPage .br-phone-label{display:inline}
+ body.on-borrow .main-content>.header{position:static;height:auto;min-height:0;padding-top:max(8px,env(safe-area-inset-top));padding-bottom:8px}
+ body.on-borrow .main-content>.header .header-left>div{display:none}
+ body.on-borrow .main-content>.header .mi-header-brand{display:flex}
+ body.on-borrow .main-content>.header{background:var(--primary);color:#fff}
+ body.on-borrow .main-content>.header .mi-header-brand b,body.on-borrow .main-content>.header .mi-header-brand small{color:#fff}
+ body.on-borrow .main-content>.header .mi-header-brand b{font-size:12px}
+ body.on-borrow .main-content>.header .mi-header-brand small{display:inline;margin-left:4px}
+ body.on-borrow .main-content .page-content{padding:12px max(12px,env(safe-area-inset-right)) calc(var(--mi-nav-clearance,84px) + 24px) max(12px,env(safe-area-inset-left))}
+ #borrowPage>.rp-note,#borrowPage #bwHome{display:none}
+ #borrowPage .br-phone-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 8px}
+ #borrowPage .br-phone-heading small{display:none}
+ #borrowPage .br-phone-heading h2{margin:0;font-size:21px;color:var(--gray-800)}
+ #borrowPage .br-phone-heading button{display:flex;align-items:center;gap:6px;min-height:44px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:10px;background:#fff;color:var(--primary);font:inherit;font-size:13px}
+ #borrowPage .br-views-menu{margin-bottom:12px}
+ #borrowPage .br-views-menu>summary{display:list-item;min-height:44px;padding:12px;border:1px solid var(--gray-200);border-radius:10px;color:var(--primary);background:var(--primary-bg);font-size:13px;cursor:pointer}
+ #borrowPage .br-views-menu .circulation-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 0}
+ #borrowPage .br-views-menu button{min-height:44px;white-space:normal}
+ #borrowPage .br-layout{gap:14px}
+ #borrowPage .br-sec,#borrowPage #borrowCartCard{padding:16px;margin:0;min-width:0;scroll-margin-top:12px;border:1px solid var(--gray-200);background:#fff;border-radius:16px;box-shadow:none}
+ #borrowPage .br-sec-title{display:flex;align-items:center;font-size:14px;margin:0 0 12px;color:var(--primary)}
+ #borrowPage #brSecBorrower>.br-sec-title::before{content:'1.'}
+ #borrowPage #brSecTool>.br-sec-title::before{content:'2.'}
+ #borrowPage .form-input-full{font-size:16px;min-height:46px;width:100%;min-width:0;margin-bottom:12px;border-radius:10px}
+ #borrowPage .field-label{font-size:12px;line-height:1.5;margin-bottom:6px}
+ #borrowPage #brSecTool>.or-divider{display:none}
+ #borrowPage #brSecTool>label[for="borrowToolId"]:has(+.input-group input:placeholder-shown),#borrowPage #brSecTool>.input-group:has(input:placeholder-shown){display:none}
+ #borrowPage .scanner-zone:not(.is-live){margin:0 0 12px;padding:0;border:0;background:transparent}
+ #borrowPage .scanner-zone:not(.is-live)>.scanner-zone-label{display:none}
+ #borrowPage .br-hint:empty{display:none}
+ #borrowPage .scanner-zone:not(.is-live) .scanner-controls{display:flex;flex-wrap:wrap;gap:8px;margin:0}
+ #borrowPage .scanner-zone:not(.is-live) .scanner-controls button{min-height:44px;padding:10px 12px;background:var(--primary-bg);color:var(--primary);border:1px solid var(--gray-200);border-radius:10px;font-size:13px;flex:1}
+ #borrowPage .br-id-hardware{display:block;margin-top:8px}
+ #borrowPage .br-id-hardware>summary{display:list-item;padding:12px 0;min-height:44px;font-size:12px;color:var(--gray-600);cursor:pointer}
+ #borrowPage .br-bcard{flex-wrap:wrap;gap:8px}
+ #borrowPage .br-bcard-main{flex:1 1 130px}
+ #borrowPage .br-bcard-x{width:auto;min-width:44px;min-height:44px;padding:8px;color:var(--primary)}
+ #borrowPage .br-bcard-x::after{content:' Change';font-size:12px}
+ #borrowPage .bt-addrow{flex-wrap:wrap;margin-bottom:0}
+ #borrowPage .br-qty{flex:1 1 100%;min-height:44px}
+ #borrowPage .bt-add{width:100%;min-height:44px}
+ #borrowPage #borrowCartCard>.br-card-header{padding:0 0 12px;gap:8px;flex-wrap:wrap}
+ #borrowPage #borrowCartCard>.br-card-header .br-card-header-icon{display:none}
+ #borrowPage #borrowCartCard h3{font-size:14px}
+ #borrowPage #borrowCartCard>.br-card-body{padding:0}
+ #borrowPage #btCartList>.empty-state{padding:8px 0;font-size:13px}
+ #borrowPage #btCartList>.empty-state>i{display:none}
+ #borrowPage #btCartList>.empty-state p{margin:0;line-height:1.5}
+ #borrowPage .bt-line{grid-template-columns:minmax(0,1fr);gap:8px;padding:12px 0}
+ #borrowPage .bt-line>.bt-ico{display:none}
+ #borrowPage .bt-ctrl{flex-wrap:wrap;gap:8px}
+ #borrowPage .bt-step,#borrowPage .bt-del,#borrowPage .bt-qty{min-width:44px;min-height:44px}
+ #borrowPage .bt-del{width:auto;padding:8px;margin-left:auto}
+ #borrowPage .bt-del::after{content:' Remove';font-size:12px;margin-left:6px}
+ #borrowPage .bt-total{margin-top:12px;padding:10px;font-size:13px;gap:8px}
+ #borrowPage #brSecLoan{display:block}
+ #borrowPage .br-bar{position:static;display:flex;flex-direction:column;align-items:stretch;gap:8px;margin:0;padding:0;border:0;background:transparent;box-shadow:none;border-radius:0}
+ #borrowPage .br-bar-sum{display:flex;gap:4px}
+ #borrowPage .br-bar-sum b{font-size:13px}
+ #borrowPage .br-bar .btn-primary-full{width:100%;min-width:0;min-height:50px;margin:0;padding:12px;font-size:15px}
+ #borrowPage #borrowSubmitBtn:disabled{cursor:not-allowed}
+ #borrowPage .br-bar.is-busy #borrowSubmitBtn{cursor:progress}
+ #borrowPage .br-sheet-top{padding-top:env(safe-area-inset-top)}
+ #borrowPage .br-sheet-foot{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+ #borrowPage summary:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+}

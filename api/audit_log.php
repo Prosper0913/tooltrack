@@ -11,6 +11,7 @@
 require_once __DIR__ . '/config.php';
 
 requireRole(ROLE_ADMIN);
+if($_SERVER['REQUEST_METHOD']==='GET')session_write_close();
 
 $db = getDB();
 

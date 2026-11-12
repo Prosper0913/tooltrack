@@ -1,0 +1,34 @@
+.od-header,.od-cards{display:none}
+.od-contact{width:calc(100% - 32px);max-width:420px;border:1px solid #334155;border-radius:20px;padding:20px;background:#0f172a;color:#e2e8f0;overflow-wrap:anywhere;font:14px/1.6 inherit}.od-contact::backdrop{background:#020617cc}.od-contact form{float:right}.od-contact button{min-width:44px;min-height:44px;border:0;border-radius:10px;background:#1e293b;color:white;font-size:22px}.od-contact a{color:#c4b5fd}.od-contact h2{font-size:18px}
+@media(max-width:767px){
+ body:has(#reportsPage.active #reportModal[data-report="overdue"]:not([hidden])),.main-content:has(#reportsPage.active #reportModal[data-report="overdue"]:not([hidden])){background:#020617;color:#e2e8f0}
+ .main-content:has(#reportsPage.active #reportModal[data-report="overdue"]:not([hidden]))>.header{display:none}
+ .main-content:has(#reportsPage.active #reportModal[data-report="overdue"]:not([hidden])) .page-content{padding:0 0 calc(90px + env(safe-area-inset-bottom));background:#020617;min-height:100dvh}
+ #reportModal[data-report="overdue"]{color:#e2e8f0;min-width:0;--gray-500:#94a3b8}
+ #reportModal[data-report="overdue"] *{box-sizing:border-box}
+ #reportModal[data-report="overdue"]>.card{display:flex;flex-direction:column;background:transparent;border:0;box-shadow:none;min-width:0;overflow:visible}
+ #reportModal[data-report="overdue"] .od-header{display:flex;align-items:center;gap:10px;padding:16px 14px;background:#6028a8;color:white}
+ .od-header>div{flex:1;min-width:0}.od-header strong,.od-header small{display:block}.od-header strong{font-size:14px}.od-header small{font-size:10px;color:#e9d5ff;margin-top:3px}.od-header button{width:44px;height:44px;border:0;border-radius:12px;background:#ffffff18;color:white;flex-shrink:0}
+ #reportModal[data-report="overdue"] .report-view-heading,#reportModal[data-report="overdue"] #reportColumns,#reportModal[data-report="overdue"] .report-toolbar-row>#exportReportBtn{display:none}
+ #reportModal[data-report="overdue"] .report-toolbar-row{padding:14px 12px;margin:0;background:transparent}
+ #reportModal[data-report="overdue"] #inventoryReportToolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;width:100%;min-width:0}
+ #reportModal[data-report="overdue"] #inventoryReportToolbar label{font-size:11px;color:#94a3b8;min-width:0;max-width:100%}
+ #reportModal[data-report="overdue"] #inventoryReportToolbar label:first-child{grid-column:1/-1}
+ #reportModal[data-report="overdue"] #inventoryReportToolbar input,#reportModal[data-report="overdue"] #inventoryReportToolbar select{width:100%;min-width:0;min-height:44px;background:#0f172a;border:1px solid #1e293b;border-radius:12px;color:#e2e8f0;font-size:16px;padding:10px}
+ #reportModal[data-report="overdue"] #inventoryReportToolbar button{align-self:end;min-height:44px;background:transparent;border:0;color:#c4b5fd}
+ #reportModal[data-report="overdue"] .report-records{padding:0 12px;max-height:none;min-height:0;overflow:visible;scrollbar-gutter:auto}
+ #reportModal[data-report="overdue"] .od-cards{display:grid;gap:10px}
+ #reportModal[data-report="overdue"].od-ready .report-table-scroll{display:none}
+ .od-card{min-width:0;padding:14px;background:#0f172a;border:1px solid #1e293b;border-radius:16px;font-size:12px}
+ .od-card header{display:flex;justify-content:space-between;align-items:center;gap:8px}.od-card code{min-width:0;overflow-wrap:anywhere;color:#94a3b8;font:10px/1.5 ui-monospace,monospace}.od-card code::before{content:'';display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:#fbbf24}.od-critical code::before{background:#fb7185}.od-card header>span{flex-shrink:0;max-width:45%;padding:4px 8px;border:1px solid #f59e0b30;border-radius:999px;color:#fbbf24;background:#f59e0b18;font-size:10px;font-weight:700}.od-critical header>span{color:#fb7185;border-color:#ef444430;background:#ef444418}
+ .od-card dl{margin:14px 0}.od-card dl>div{display:flex;justify-content:space-between;gap:10px;margin:6px 0}.od-card dt{color:#94a3b8;flex-shrink:0}.od-card dd{min-width:0;margin:0;color:#fde68a;text-align:right;overflow-wrap:anywhere}.od-card dl>div:first-child dd{color:white;font-weight:700}.od-critical dl>div:last-child dd{color:#fda4af}
+ .od-card footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:8px;border-top:1px solid #1e293b;font-size:11px;color:#94a3b8}.od-card footer>span{min-width:0;overflow-wrap:anywhere}.od-card footer button{min-height:44px;flex-shrink:0;background:transparent;border:0;color:#c4b5fd;font:inherit;cursor:pointer}.od-pending{font-size:10px;color:#fbbf24;overflow-wrap:anywhere}
+ .od-empty{padding:32px 20px;text-align:center;background:#0f172a;border:1px solid #1e293b;border-radius:16px}.od-empty>i{font-size:28px;color:#a78bfa}.od-empty h3{color:white;font-size:14px;margin:12px 0 6px}.od-empty p{color:#94a3b8;font-size:11px;line-height:1.7}.od-empty button{background:#1e293b;color:#e2e8f0;border:0;border-radius:12px;min-height:44px;padding:10px 14px}
+ #reportModal[data-report="overdue"] .inventory-report-pagination{order:5;margin:0;padding:14px 12px;color:#94a3b8;font-size:11px;background:transparent;border:0}
+ #reportModal[data-report="overdue"] .inventory-report-pagination button,#reportModal[data-report="overdue"] .inventory-report-pagination select{min-height:44px;background:#0f172a;color:#e2e8f0;border:1px solid #1e293b;border-radius:10px}
+ #reportModal[data-report="overdue"] .inventory-report-pagination button:disabled{opacity:.4}
+ body:has(#reportsPage.active #reportModal[data-report="overdue"]:not([hidden])) #mobileUtilityNav{background:#020617;border-color:#1e293b;box-shadow:none}
+ body:has(#reportsPage.active #reportModal[data-report="overdue"]:not([hidden])) #mobileUtilityNav button{color:#94a3b8}
+ body:has(#reportsPage.active #reportModal[data-report="overdue"]:not([hidden])) #mobileUtilityNav button[aria-current]{background:transparent;color:#a78bfa}
+ #reportModal[data-report="overdue"] :focus-visible,.od-contact :focus-visible{outline:2px solid #7c3aed;outline-offset:3px}
+}
