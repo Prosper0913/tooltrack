@@ -1,0 +1,721 @@
+.mi-list-heading,.tt-mobile-stock{display:none}
+/* More reuses the role-filtered sidebar destinations, without a second route list. */
+.mi-more nav,.mi-more-account{display:grid;gap:6px}
+.mi-more nav button,.mi-more-account button{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:12px;border:0;border-radius:12px;background:var(--gray-50);color:var(--gray-800);font:inherit;text-align:left;cursor:pointer;overflow-wrap:anywhere}
+.mi-more nav button i,.mi-more-account button i{width:22px;text-align:center;color:var(--primary);flex-shrink:0}
+.mi-more nav button[aria-current]{background:var(--primary-bg);color:var(--primary);font-weight:600}
+.mi-more-account{margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-200)}
+.mi-more-account .mi-more-logout,.mi-more-account .mi-more-logout i{color:var(--danger,#b91c1c)}
+.mi-dialog button:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+/* App-like inventory home; desktop inventory and other page themes stay intact. */
+#mobileInventoryHome,
+#mobileUtilityNav,
+.mi-header-brand,
+.mi-search-toggle,
+.mi-back {
+    display: none
+}
+
+.mi-dialog {
+    box-sizing: border-box;
+    width: calc(100% - 32px);
+    max-width: 420px;
+    max-height: 85dvh;
+    overflow: auto;
+    padding: 24px;
+    border: 1px solid var(--gray-200);
+    border-radius: 24px;
+    background: #fff;
+    color: var(--gray-800);
+    box-shadow: 0 24px 70px #0008
+}
+
+#mobileScanChoice {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    max-height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+
+.mi-dialog::backdrop {
+    background: rgba(17, 24, 39, .45);
+    backdrop-filter: blur(6px)
+}
+
+.mi-dialog h2 {
+    font-size: 24px;
+    margin: 8px 0
+}
+
+.mi-dialog p {
+    color: var(--gray-500);
+    font-size: 14px;
+    margin: 12px 0 20px
+}
+
+.mi-dialog>button {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    margin: 10px 0;
+    padding: 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: 14px;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer
+}
+
+.mi-dialog-close {
+    float: right;
+    min-width: 44px;
+    min-height: 44px;
+    background: var(--gray-100);
+    color: var(--gray-600);
+    border: 0;
+    border-radius: 12px;
+    font-size: 24px;
+    cursor: pointer
+}
+
+@media(max-width:767px) {
+
+    body:has(#toolsPage.active),
+    .main-content:has(#toolsPage.active) {
+        background: var(--gray-50);
+        color: var(--gray-800)
+    }
+
+    .main-content:has(#toolsPage.active) .page-content {
+        padding: 20px 18px 104px;
+        background: var(--gray-50);
+        min-height: calc(100dvh - 68px)
+    }
+
+    .main-content:has(#toolsPage.active) .header {
+        background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-100);
+        box-shadow: none;
+        padding: 12px 18px;
+        min-height: 68px;
+        gap: 8px
+    }
+
+    .main-content:has(#toolsPage.active) .header-left>div,
+    .main-content:has(#toolsPage.active) .header .search-box,
+    .main-content:has(#toolsPage.active) .header .date-display {
+        display: none
+    }
+
+    .main-content:has(#toolsPage.active) .header-btn,
+    .main-content:has(#toolsPage.active) .mobile-menu-btn {
+        min-height: 44px;
+        min-width: 44px;
+        border-radius: 14px;
+        background: #fff;
+        border: 1px solid var(--gray-100);
+        color: var(--gray-600)
+    }
+
+    .main-content:has(#toolsPage.active) .mi-search-toggle {
+        display: inline-flex
+    }
+
+    .main-content:has(#toolsPage.active) .header-right>div>button[aria-label="Account settings"] {
+        display: none
+    }
+
+    .main-content:has(#toolsPage.active) .mi-header-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0
+    }
+
+    .mi-header-brand>span {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 36px;
+        background: var(--primary);
+        border: 1px solid var(--primary-light);
+        border-radius: 11px;
+        font-size: 21px;
+        font-weight: 800;
+        color: #fff
+    }
+
+    .mi-header-brand b {
+        font-size: 14px;
+        line-height: 1.2;
+        color: var(--gray-800)
+    }
+
+    .mi-header-brand small {
+        display: block;
+        font-size: 10px;
+        font-weight: 500;
+        color: var(--gray-500);
+        margin-top: 3px
+    }
+
+    #toolsPage.mi-home-open>#mobileInventoryCollection {
+        display: none
+    }
+
+    #toolsPage:not(.mi-home-open)>#mobileInventoryHome {
+        display: none
+    }
+
+    #mobileInventoryHome {
+        display: block;
+        max-width: 100%;
+        min-width: 0;
+        scroll-margin-top: 84px
+    }
+
+    #mobileInventoryCollection {
+        scroll-margin-top: 84px
+    }
+
+    #mobileInventoryHome .mi-intro {
+        padding: 10px 0 24px
+    }
+
+    .mi-eyebrow {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 1.8px;
+        color: var(--primary)
+    }
+
+    #mobileInventoryHome h2 {
+        font-size: 27px;
+        line-height: 1.2;
+        letter-spacing: -.8px;
+        margin: 10px 0;
+        color: var(--gray-800);
+        font-weight: 700
+    }
+
+    #mobileInventoryHome .mi-intro p {
+        font-size: 12px;
+        color: var(--gray-500);
+        margin: 0;
+        line-height: 1.7
+    }
+
+    #mobileInventoryHome .mi-hero-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px
+    }
+
+    #mobileInventoryHome button {
+        font-family: inherit;
+        cursor: pointer
+    }
+
+    #mobileInventoryHome .mi-hero {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        min-width: 0;
+        min-height: 158px;
+        padding: 18px 14px;
+        border: 1px solid var(--gray-200);
+        border-radius: 23px;
+        background: linear-gradient(140deg, var(--gray-100), #fff);
+        color: var(--gray-800);
+        text-align: left
+    }
+
+    #mobileInventoryHome .mi-primary {
+        color: #fff;
+        background: linear-gradient(140deg, var(--primary-light), var(--primary) 80%);
+        border-color: var(--primary-light)
+    }
+
+    #mobileInventoryHome .mi-hero>i,
+    #mobileInventoryHome .mi-hero>svg {
+        width: 28px;
+        height: 28px;
+        font-size: 25px;
+        margin-bottom: 20px;
+        color: var(--primary)
+    }
+
+    #mobileInventoryHome .mi-primary>b {
+        color: #ede9fe
+    }
+
+    #mobileInventoryHome .mi-primary>span {
+        color: #1e1035;
+        font-weight: 600
+    }
+
+    #mobileInventoryHome .mi-primary>i,
+    #mobileInventoryHome .mi-primary>svg {
+        color: #fff
+    }
+
+    #mobileInventoryHome .mi-hero strong {
+        font-size: 17px;
+        letter-spacing: -.3px
+    }
+
+    #mobileInventoryHome .mi-hero>span {
+        font-size: 10px;
+        color: var(--gray-600);
+        margin-top: 6px
+    }
+
+    #mobileInventoryHome .mi-hero>b {
+        position: absolute;
+        right: 14px;
+        top: 14px;
+        color: var(--primary);
+        font-size: 18px
+    }
+
+    #mobileInventoryHome .mi-section-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 28px 0 16px
+    }
+
+    #mobileInventoryHome .mi-section-heading h3 {
+        font-size: 16px;
+        color: var(--gray-800);
+        margin: 0;
+        font-weight: 600
+    }
+
+    #mobileInventoryHome .mi-section-heading>span {
+        color: var(--gray-500);
+        font-size: 10px
+    }
+
+    #mobileInventoryHome .mi-section-heading button {
+        background: transparent;
+        border: 0;
+        min-height: 44px;
+        color: var(--primary);
+        font-size: 12px
+    }
+
+    #mobileInventoryHome .mi-category-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px 10px
+    }
+
+    #mobileInventoryHome .mi-category-grid>button {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        min-height: 102px;
+        padding: 12px 4px;
+        border: 1px solid var(--gray-100);
+        border-radius: 18px;
+        background: #fff;
+        color: var(--gray-600);
+        font-size: 11px;
+        overflow-wrap: anywhere
+    }
+
+    #mobileInventoryHome .mi-category-grid>button>span {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        border: 1px solid var(--gray-200);
+        background: var(--primary-bg);
+        border-radius: 14px;
+        color: var(--primary)
+    }
+
+    #mobileInventoryHome .mi-category-grid svg {
+        width: 22px;
+        height: 22px
+    }
+
+    #mobileInventoryHome .mi-category-grid .mi-warning {
+        color: #fbbf24;
+        background: #f59e0b18;
+        border-color: #f59e0b22
+    }
+
+    #mobileInventoryHome .mi-feed {
+        border: 1px solid var(--gray-100);
+        border-radius: 20px;
+        overflow: hidden;
+        background: #fff
+    }
+
+    #mobileInventoryHome .mi-feed>p {
+        padding: 20px;
+        color: var(--gray-500);
+        font-size: 12px;
+        line-height: 1.6
+    }
+
+    #mobileInventoryHome .mi-feed>p button {
+        color: var(--primary);
+        background: transparent;
+        border: 0;
+        min-height: 44px;
+        padding: 8px
+    }
+
+    #mobileInventoryHome .mi-activity {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 12px;
+        width: 100%;
+        min-width: 0;
+        min-height: 76px;
+        background: transparent;
+        color: var(--gray-800);
+        border: 0;
+        border-bottom: 1px solid var(--gray-100);
+        text-align: left
+    }
+
+    #mobileInventoryHome .mi-activity:last-child {
+        border-bottom: 0
+    }
+
+    #mobileInventoryHome .mi-feed-icon {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 38px;
+        flex-shrink: 0;
+        background: var(--primary-bg);
+        color: var(--primary);
+        border-radius: 12px
+    }
+
+    #mobileInventoryHome .mi-feed-copy {
+        flex: 1;
+        min-width: 0
+    }
+
+    #mobileInventoryHome .mi-feed-copy strong {
+        display: block;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+        font-weight: 600
+    }
+
+    #mobileInventoryHome .mi-feed-copy code {
+        display: block;
+        font-size: 9px;
+        color: var(--gray-500);
+        margin-top: 6px;
+        overflow-wrap: anywhere
+    }
+
+    #mobileInventoryHome .mi-feed-status {
+        max-width: 95px;
+        flex-shrink: 0
+    }
+
+    #mobileInventoryHome .status-badge {
+        font-size: 9px;
+        padding: 4px 7px;
+        white-space: normal;
+        background: var(--primary-bg);
+        color: var(--primary);
+        border: 1px solid var(--gray-200)
+    }
+
+    #mobileInventoryHome button:focus-visible,
+    #mobileUtilityNav button:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 3px
+    }
+
+    #mobileUtilityNav {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        padding: 8px 12px max(8px, env(safe-area-inset-bottom));
+        background: rgba(255, 255, 255, .97);
+        backdrop-filter: blur(18px);
+        border-top: 1px solid var(--gray-200);
+        box-shadow: 0 -8px 30px var(--primary-glow)
+    }
+
+    #mobileUtilityNav button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 5px;
+        min-height: 52px;
+        min-width: 0;
+        border: 0;
+        border-radius: 14px;
+        background: transparent;
+        color: var(--gray-500);
+        font-size: 10px;
+        cursor: pointer
+    }
+
+    #mobileUtilityNav button svg,
+    #mobileUtilityNav button i {
+        width: 22px;
+        height: 22px;
+        font-size: 20px
+    }
+
+    #mobileUtilityNav button[aria-current] {
+        color: var(--primary);
+        background: var(--primary-bg)
+    }
+
+    .main-content .page-content {
+        padding-bottom: 100px
+    }
+
+    body:has(.br-sheet:not([hidden])) #mobileUtilityNav,
+    body:has(.br-scan[aria-hidden="false"]) #mobileUtilityNav {
+        display: none
+    }
+
+    #toolsPage .mi-back {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px;
+        min-height: 48px;
+        background: transparent;
+        border: 0;
+        color: var(--primary);
+        font-size: 13px;
+        cursor: pointer
+    }
+
+    #toolsPage.mi-collection-open>#mobileInventoryCollection {
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        border-radius: 20px;
+        color: var(--gray-800)
+    }
+
+    #toolsPage.mi-collection-open #mobileInventoryCollection .card-title {
+        color: var(--gray-800)
+    }
+
+    #toolsPage.mi-collection-open #mobileInventoryCollection .card-header,
+    #toolsPage.mi-collection-open #mobileInventoryCollection .filter-bar {
+        background: #fff;
+        border-color: var(--gray-200)
+    }
+
+    #toolsPage.mi-collection-open #mobileInventoryCollection input,
+    #toolsPage.mi-collection-open #mobileInventoryCollection select {
+        background: var(--gray-50);
+        color: var(--gray-800);
+        border-color: var(--gray-200)
+    }
+
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-data-row,
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-detail-row>td {
+        background: #fff;
+        color: var(--gray-800);
+        border-color: var(--gray-200)
+    }
+
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-data-row td,
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-data-row h4 {
+        color: var(--gray-800)
+    }
+
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-data-row small,
+    #toolsPage.mi-collection-open #mobileInventoryCollection .pagination-info {
+        color: var(--gray-500)
+    }
+
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-data-row>td {
+        background: #fff;
+        border-color: var(--gray-200)
+    }
+
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-data-row>td[data-col="inventory"],
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-data-row>td[data-col="activity"],
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-data-row>td[data-col="condition"] {
+        background: var(--gray-100)
+    }
+
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-detail-pair>strong,
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-sum-count {
+        color: var(--gray-800)
+    }
+
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-sum-label {
+        color: var(--gray-500)
+    }
+
+    #toolsPage.mi-collection-open #mobileInventoryCollection .tt-sum {
+        background: var(--gray-100);
+        color: var(--gray-800);
+        border-color: var(--gray-200)
+    }
+}
+
+@media(prefers-reduced-motion:reduce) {
+    #mobileInventoryHome * {
+        scroll-behavior: auto
+    }
+}
+
+/* Compact Tools list: presentation only; reuse the existing grouped rows. */
+@media(max-width:600px){
+ .main-content:has(#toolsPage.active) .header-left>div{display:block;min-width:0}
+ .main-content:has(#toolsPage.active) .mi-header-brand,.main-content:has(#toolsPage.active) .breadcrumb{display:none}
+ .main-content:has(#toolsPage.active) .page-title{font-size:15px;line-height:1.3;white-space:normal}
+ .main-content:has(#toolsPage.active) .header{padding:10px 12px;gap:8px;background:linear-gradient(90deg,var(--primary),var(--primary-dark));border-bottom:none}
+ .main-content:has(#toolsPage.active) .header-btn,.main-content:has(#toolsPage.active) .mobile-menu-btn{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff}
+ .main-content:has(#toolsPage.active) .page-content{padding:12px 12px 100px}
+ #toolsPage #mobileInventoryCollection{border:0;border-radius:0;box-shadow:none;background:transparent}
+ #toolsPage #mobileInventoryCollection>.mi-back{display:none}
+ #toolsPage #mobileInventoryCollection>.card-header{padding:0;margin:0 0 12px;border:0;background:transparent}
+ #toolsPage #mobileInventoryCollection>.card-header>.card-title{display:none}
+ #toolsPage #mobileInventoryCollection .card-actions{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+ #toolsPage #mobileInventoryCollection .card-actions>.primary{flex:1 1 100%;min-height:44px;border-radius:12px;font-size:13px;order:-1}
+ #toolsPage:not(.mi-filters-open) #mobileInventoryCollection .card-actions>.secondary{display:none}
+ #toolsPage #toolsSummary{gap:8px;padding:0;margin-bottom:12px}
+ #toolsPage #toolsSummary .tt-sum{min-height:62px;padding:10px;border-radius:12px;gap:8px}
+ #toolsPage #toolsSummary .tt-sum-icon{width:28px;height:28px;font-size:13px;border-radius:8px}
+ #toolsPage #toolsSummary .tt-sum-count{font-size:16px;line-height:1.3}
+ #toolsPage #toolsSummary .tt-sum-label{font-size:10px}
+ #toolsPage .mi-list-heading{display:flex;align-items:center;gap:8px;margin:0 0 10px;min-width:0}
+ #toolsPage .mi-list-heading>div{flex:1;min-width:0}
+ #toolsPage .mi-list-heading h3{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--gray-600);margin:0}
+ #toolsPage .mi-list-heading small{display:block;font-size:10px;color:var(--gray-500);overflow-wrap:anywhere}
+ #toolsPage .mi-list-heading button{min-height:44px;min-width:44px;padding:8px;border:0;border-radius:10px;background:var(--primary-bg);color:var(--primary);font-size:11px;cursor:pointer}
+ #toolsPage:not(.mi-filters-open) #toolInventoryFilters,#toolsPage:not(.mi-filters-open) #mobileInventoryCollection>.tt-table-toolbar{display:none}
+ #toolsPage #toolInventoryFilters{padding:12px;margin-bottom:12px;border:1px solid var(--gray-200);border-radius:14px}
+ #toolsPage #mobileInventoryCollection>.table-container{padding:0;max-width:100%}
+ #toolsPage #mobileInventoryCollection .tt-grouped-table>tbody{gap:8px}
+ #toolsPage #mobileInventoryCollection .tt-grouped-table tr.tt-data-row{padding:10px 12px;gap:8px;border-radius:12px}
+ #toolsPage #mobileInventoryCollection .tt-grouped-table tr.tt-data-row>td[data-col="tool"]{padding:0!important;background:transparent!important;grid-column:1/-1}
+ #toolsPage #mobileInventoryCollection .tt-grouped-table tr.tt-data-row:not(.tt-row-expanded)>td:not([data-col="tool"]){display:none!important}
+ #toolsPage #mobileInventoryCollection .tt-name-cell{display:flex;align-items:center;gap:9px;min-width:0;width:100%}
+ #toolsPage #mobileInventoryCollection .tt-name-cell>.tool-icon{order:0;width:32px;height:34px;min-width:32px;border-radius:9px;font-size:15px;margin:0}
+ #toolsPage #mobileInventoryCollection .tt-name-cell>.tool-info{order:1;min-width:0;flex:1}
+ #toolsPage #mobileInventoryCollection .tt-name-cell>.tool-info h4{font-size:12px;line-height:1.4;margin:0;overflow-wrap:anywhere}
+ #toolsPage #mobileInventoryCollection .tt-name-cell>.tool-info>span{display:block;font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+ #toolsPage #mobileInventoryCollection .tt-card-status{display:block;margin-top:4px}
+ #toolsPage #mobileInventoryCollection .tt-card-status .status-badge{display:inline-flex;width:auto;font-size:9px;padding:2px 6px;line-height:1.5;white-space:normal}
+ #toolsPage #mobileInventoryCollection .tt-mobile-stock{display:flex;flex-direction:column;align-items:flex-end;gap:2px;order:2;flex-shrink:0}
+ #toolsPage #mobileInventoryCollection .tt-mobile-stock strong{font-size:14px;color:var(--primary);font-variant-numeric:tabular-nums}
+ #toolsPage #mobileInventoryCollection .tt-mobile-stock small{font-size:8px;line-height:1.3;color:var(--gray-500);white-space:nowrap}
+ #toolsPage #mobileInventoryCollection .tt-name-cell>.tt-expand{order:3;width:44px;height:44px;min-width:44px;margin:0}
+ #toolsPage #mobileInventoryCollection .tt-grouped-table tr.tt-row-expanded>td[data-col="price"]:not([hidden]){display:block!important}
+ #toolsPage #mobileInventoryCollection .tt-detail-row>td{max-width:100%;overflow-wrap:anywhere}
+ #toolsPage #mobileInventoryCollection .pagination{padding:12px 0;gap:10px;justify-content:center}
+ #toolsPage #mobileInventoryCollection .pagination-info{width:100%;text-align:center;font-size:11px}
+ #toolsPage #mobileInventoryCollection .page-btn{min-width:44px;min-height:44px}
+}
+@media(min-width:601px) and (max-width:767px){
+ #toolsPage:not(.mi-collection-open)>#mobileInventoryCollection{display:none}
+ #toolsPage:not(.mi-collection-open)>#mobileInventoryHome{display:block}
+}
+
+/* Tool detail organization: keep the desktop's flat grid, compact sections on phones. */
+#toolsPage .tt-tool-panel .tt-tool-section,#toolsPage .tt-tool-panel .tt-tool-section-grid,#toolsPage .tt-tool-panel .tt-tool-extra,#toolsPage .tt-tool-panel .tt-more-content,#toolsPage .tt-tool-panel .tt-detail-long{display:contents}
+#toolsPage .tt-tool-panel .tt-tool-section>h4,#toolsPage .tt-tool-panel .tt-tool-more{display:none}
+@media(max-width:600px){
+ .main-content:has(#toolsPage.active) .page-content{padding-bottom:calc(100px + env(safe-area-inset-bottom,0px))}
+ #toolsPage #mobileInventoryCollection .tt-grouped-table tr.tt-row-expanded>td:not([data-col="tool"]):not([data-col="actions"]){display:none!important}
+ #toolsPage #mobileInventoryCollection .tt-grouped-table tr.tt-row-expanded>td[data-col="actions"]{padding:6px 0 0!important;background:transparent!important}
+ #toolsPage #mobileInventoryCollection .tt-detail-row{position:static;margin-top:-8px;min-width:0;scroll-margin-top:84px}
+ #toolsPage #mobileInventoryCollection .tt-detail-row>td{box-sizing:border-box;padding:12px!important;border-radius:0 0 12px 12px;min-width:0;max-width:100%}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;min-width:0;width:100%}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .tt-tool-section{display:block;min-width:0}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .tt-tool-section>h4{display:block;margin:0 0 8px;font-size:12px;font-weight:700;color:var(--gray-700);line-height:1.5}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .tt-tool-section-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;min-width:0}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .tt-detail-pair{gap:2px;min-width:0}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .tt-detail-pair>span{font-size:11px;line-height:1.5;text-transform:none;letter-spacing:0;color:var(--gray-600);overflow-wrap:anywhere}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .tt-detail-pair>strong{font-size:13px;line-height:1.5;color:var(--gray-800);overflow-wrap:anywhere;min-width:0}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .tt-tool-extra{display:block;min-width:0;border-top:1px solid var(--gray-200);padding-top:8px}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .tt-tool-more{display:block;min-height:44px;width:100%;padding:8px 12px;border:1px solid var(--gray-200);border-radius:10px;background:var(--primary-bg);color:var(--primary);font-family:inherit;font-size:12px;font-weight:600;line-height:1.5;cursor:pointer}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .tt-more-content{display:none}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .tt-more-open>.tt-more-content{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-top:12px}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .tt-detail-long{display:block;grid-column:1/-1;min-width:0}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .tt-detail-long strong{white-space:pre-wrap;overflow-wrap:anywhere}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel code{white-space:normal;overflow-wrap:anywhere}
+ #toolsPage #mobileInventoryCollection .tt-tool-panel .card-btn{min-height:44px;max-width:100%;white-space:normal}
+}
+
+/* Phone shell only. Desktop and tablet retain the original sidebar and header. */
+@media(max-width:767px){
+ :root{--mi-nav-clearance:calc(84px + env(safe-area-inset-bottom,0px))}
+ html{scroll-padding-bottom:var(--mi-nav-clearance)}
+ .header #mobileMenuBtn{display:none}
+ .main-content .header .breadcrumb,.main-content .header .search-box,.main-content .header .date-display,.main-content .header button[aria-label="Account settings"]{display:none}
+ .main-content .header{padding:10px max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left));min-height:68px;gap:8px}
+ .main-content .header .mi-header-brand{display:flex;align-items:center;gap:8px;flex-shrink:0}
+ .main-content .header .header-left{gap:10px}
+ .main-content .header .header-left>div{display:block;min-width:0}
+ .main-content .header .page-title{font-size:14px;white-space:normal;line-height:1.3}
+ .main-content .header .mi-header-brand>span{display:none}
+ .main-content .header .mi-header-brand b{font-size:13px;color:inherit}
+ .main-content .header .mi-header-brand small{font-size:11px;color:inherit}
+ .main-content .header .header-btn{min-width:44px;min-height:44px}
+ .main-content .page-content,.main-content:has(#toolsPage.active) .page-content{padding-bottom:calc(var(--mi-nav-clearance) + 24px)}
+ #mobileUtilityNav{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+ #mobileUtilityNav button{font-size:12px;color:var(--gray-600)}
+ #mobileUtilityNav button[aria-current]{color:var(--primary)}
+ body:has(.modal-overlay.active) #mobileUtilityNav{display:none}
+ #returnPage .return-summary{bottom:var(--mi-nav-clearance)}
+ .mi-more{margin:auto auto calc(var(--mi-nav-clearance) + 8px);max-height:calc(100dvh - var(--mi-nav-clearance) - 32px);padding:18px;border-radius:20px}
+ .mi-more h2{font-size:20px;margin-bottom:16px}
+ #mobileInventoryHome .mi-intro{padding:4px 0 16px}
+ #mobileInventoryHome h2{font-size:22px}
+ #mobileInventoryHome .mi-hero{min-height:112px;padding:14px;border-radius:16px}
+ #mobileInventoryHome .mi-hero>i,#mobileInventoryHome .mi-hero>svg{margin-bottom:10px}
+ #mobileInventoryHome .mi-hero>span{font-size:12px}
+ #mobileInventoryHome .mi-hero.mi-primary{order:1;background:#fff;color:var(--gray-800);border-color:var(--gray-200)}
+ #mobileInventoryHome .mi-hero.mi-primary>i,#mobileInventoryHome .mi-hero.mi-primary>svg{color:var(--primary)}
+ #mobileInventoryHome .mi-hero.mi-primary>span{color:var(--gray-600)}
+ #mobileInventoryHome .mi-hero.mi-primary>b{color:var(--primary)}
+ #mobileInventoryHome .mi-hero:not(.mi-primary){background:var(--primary-bg);border-color:var(--primary-light)}
+ #mobileInventoryHome .mi-category-grid>button{font-size:13px}
+ #mobileInventoryHome .mi-feed-copy strong{font-size:14px}
+ #mobileInventoryHome .mi-feed-copy code{font-size:11px}
+ .page input:not([type=checkbox]):not([type=radio]),.page select,.page textarea{font-size:16px}
+ .page button:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+}
+
+.tool-mobile-details{display:none}
+.tool-details-drawer .tool-drawer-content{padding-top:14px}
+.tool-details-drawer .tt-details-grid,.tool-details-drawer .tt-tool-panel{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px}
+.tool-details-drawer .tt-tool-section,.tool-details-drawer .tt-tool-extra{min-width:0;background:#020617;border:1px solid #1e293b;border-radius:14px;padding:12px}
+.tool-details-drawer .tt-tool-section-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tool-details-drawer .tt-detail-pair{display:flex;flex-direction:column;gap:5px;min-width:0}
+.tool-details-drawer .tt-detail-pair>span{color:#94a3b8;font-size:10px;text-transform:uppercase}
+.tool-details-drawer .tt-detail-pair>strong{color:#e2e8f0;font-size:13px;overflow-wrap:anywhere;white-space:normal}
+.tool-details-drawer .tt-more-content{display:grid!important;grid-template-columns:minmax(0,1fr);gap:12px}
+.tool-details-drawer .tt-detail-long{grid-column:1/-1;min-width:0}
+.tool-details-drawer h4{color:#c4b5fd;margin:0 0 12px;font-size:12px}
+.tool-details-drawer code{overflow-wrap:anywhere;white-space:normal}
+@media(max-width:767px){
+ #toolsPage .tool-mobile-details{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:10px 12px;border:1px solid #e9e3f3;border-radius:10px;background:#f5f0ff;color:#6028a8;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+ body:has(#toolDetailsDrawer[open]){overflow:hidden}
+}

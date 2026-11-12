@@ -1,0 +1,135 @@
+/* Transactions paginate headers; their tool details stay inside the report scroll area. */
+.report-workspace[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-toggle{position:sticky;left:0;min-width:42px;width:42px;max-width:42px;padding:8px;background:var(--gray-50,#faf8ff);z-index:3}
+.report-workspace[data-report="transactions"][data-transactions-grouped="true"] th.transaction-report-toggle{top:0;z-index:7}
+.report-workspace[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-summary .report-identity,.report-workspace[data-report="transactions"][data-transactions-grouped="true"] #reportTableHead .report-identity{left:42px}
+.report-workspace[data-report="transactions"] .transaction-report-summary>td{font-weight:500;vertical-align:middle}
+.report-workspace[data-report="transactions"] .transaction-report-summary>td small{display:block;margin-top:5px;font-size:12px;color:var(--gray-500,#64748b)}
+.report-workspace[data-report="transactions"] .transaction-report-details>td{max-width:0;padding:12px 16px 18px;background:#faf8ff!important;border-bottom:1px solid #e9e3f3}
+/* Size against the spanning cell, without letting nested content widen the parent table. */
+.report-workspace[data-report="transactions"] .transaction-report-detail-scroll{box-sizing:border-box;width:100%;min-width:0;max-width:100%;overflow-x:auto;border:1px solid #e9e3f3;border-radius:8px;background:#fff}
+.report-workspace[data-report="transactions"] .transaction-report-tools{min-width:800px;width:100%;font-size:13px}
+.report-workspace[data-report="transactions"] .transaction-report-tools caption{text-align:left;padding:10px 12px;font-size:12px;font-weight:600;color:var(--gray-600,#475569);white-space:normal}
+.report-workspace[data-report="transactions"] .transaction-report-tools th{position:static;min-width:80px;font-size:12px;white-space:normal}
+.report-workspace[data-report="transactions"] .transaction-report-tools td{position:static;vertical-align:top;padding:10px 12px;white-space:normal}
+.report-workspace[data-report="transactions"] .transaction-report-tools td:first-child{min-width:170px}
+.transaction-report-tools td small{display:block;margin-top:4px;color:var(--gray-500,#64748b);font-size:11px}
+.transaction-report-tools code{overflow-wrap:anywhere}
+.transaction-report-warning{color:#b45309!important}
+@media(max-width:640px){.report-workspace[data-report="transactions"] .transaction-report-details>td{padding:10px 6px 14px}.report-workspace[data-report="transactions"] .transaction-report-toggle .action-btn{min-width:32px;min-height:36px}}
+
+/* Transactions history design. All rules are limited to this report. */
+#reportModal[data-report="transactions"]{--txn-purple:#6028a8;max-width:100%;min-width:0;color:#334155}
+#reportModal[data-report="transactions"]>.card{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;background:transparent;border:0;box-shadow:none;overflow:visible;min-width:0}
+#reportModal[data-report="transactions"] .report-view-heading{display:flex;align-items:center;align-content:center;gap:12px;padding:0;flex-wrap:wrap}
+#reportModal[data-report="transactions"] .report-view-heading>div{display:contents}
+#reportModal[data-report="transactions"] .report-view-heading h2{font-size:30px;letter-spacing:-1px;color:#0f172a;line-height:1.2;margin:0}
+#reportModal[data-report="transactions"] .report-view-heading p{flex-basis:100%;margin:0;font-size:13px;color:#64748b}
+#reportModal[data-report="transactions"] .report-view-heading>.btn{background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;border-radius:13px;font-size:12px;padding:10px 14px}
+#reportModal[data-report="transactions"] .transaction-report-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:20px;background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 1px 2px #0f172a08}
+#reportModal[data-report="transactions"] .transaction-report-stat{min-width:0;background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:16px;box-shadow:0 1px 2px #0f172a08}
+#reportModal[data-report="transactions"] .transaction-report-stat>span{display:block;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;line-height:1.6}
+#reportModal[data-report="transactions"] .transaction-report-stat>span i{display:none}
+#reportModal[data-report="transactions"] .transaction-report-stat strong{display:block;font-size:26px;line-height:1.3;margin-top:4px;color:#1e293b;font-variant-numeric:tabular-nums}
+#reportModal[data-report="transactions"] [data-stat="returned_checkouts"] strong{color:#6028a8}
+#reportModal[data-report="transactions"] [data-stat="damaged_checkouts"] strong{color:#d97706}
+#reportModal[data-report="transactions"] [data-stat="missing_checkouts"] strong{color:#be123c}
+#reportModal[data-report="transactions"] .transaction-report-overview>p{grid-column:1/-1;margin:0;font-size:11px;color:#64748b}
+#reportModal[data-report="transactions"] .report-toolbar-row{grid-column:1/-1;display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:0;padding:18px;background:#fff;border:1px solid #e2e8f0;border-radius:20px;box-shadow:0 1px 2px #0f172a08}
+#reportModal[data-report="transactions"] .inventory-report-toolbar{flex:1;display:flex;align-items:end;flex-wrap:wrap;gap:10px;min-width:0;margin:0;padding:0}
+#reportModal[data-report="transactions"] .inventory-report-toolbar label{min-width:0;font-size:11px;color:#64748b}
+#reportModal[data-report="transactions"] .inventory-report-toolbar label:first-child{flex:1 1 260px;max-width:none}
+#reportModal[data-report="transactions"] .inventory-report-toolbar input,#reportModal[data-report="transactions"] .inventory-report-toolbar select{box-sizing:border-box;min-width:0;max-width:100%;height:42px;background:#f8fafc;border:1px solid #dfe7f2;border-radius:13px;font-size:13px;color:#334155}
+#reportModal[data-report="transactions"] .inventory-report-toolbar input{width:100%}
+#reportModal[data-report="transactions"] .report-toolbar-row button,#reportModal[data-report="transactions"] .report-toolbar-row summary{box-sizing:border-box;min-height:42px;border-radius:13px;padding:10px 14px;font-size:12px;background:#f1f5f9;border:1px solid #dfe7f2;color:#475569;white-space:nowrap}
+#reportModal[data-report="transactions"] .report-toolbar-row #exportReportBtn{background:var(--txn-purple);border-color:var(--txn-purple);color:#fff;box-shadow:0 3px 6px #6028a826}
+#reportModal[data-report="transactions"] .report-columns{margin:0}
+#reportModal[data-report="transactions"] .report-records{grid-column:1/-1;min-width:0;margin:0;padding:0;max-height:none;overflow:visible;border:1px solid #e2e8f0;border-radius:20px;background:#fff}
+#reportModal[data-report="transactions"] .report-table-scroll{box-sizing:border-box;position:relative;max-width:100%;width:100%;min-width:0;max-height:65dvh;overflow:auto;overscroll-behavior:contain;border-radius:19px}
+#reportModal[data-report="transactions"] .report-table-scroll>.data-table{font-size:13px;width:100%;border-spacing:0}
+#reportModal[data-report="transactions"] #reportTableHead th{position:sticky;top:0;background:var(--txn-purple);color:white;text-transform:uppercase;font-size:12px;letter-spacing:.25px;padding:20px 16px;border:0;z-index:4}
+#reportModal[data-report="transactions"] #reportTableHead .inventory-report-sort{color:inherit;font-size:inherit;text-transform:inherit;font-weight:700}
+#reportModal[data-report="transactions"] #reportTableBody>.transaction-report-summary>td{padding:20px 16px;border-bottom:1px solid #eef2ff;font-size:13px;vertical-align:middle;background:#fff}
+#reportModal[data-report="transactions"] #reportTableBody>.transaction-report-summary:nth-child(4n+3)>td{background:#f8f7ff}
+#reportModal[data-report="transactions"] #reportTableBody>.transaction-report-summary:hover>td{background:#f1ecfb}
+#reportModal[data-report="transactions"] .transaction-report-id{font-family:Consolas,monospace;color:#475569;font-weight:500;font-size:12px;overflow-wrap:anywhere}
+#reportModal[data-report="transactions"] .data-table .report-identity{min-width:150px;max-width:200px}
+#reportModal[data-report="transactions"] #reportTableHead .report-identity{z-index:6}
+#reportModal[data-report="transactions"] #reportTableHead th.transaction-report-toggle{left:0;z-index:7}
+#reportModal[data-report="transactions"] .transaction-report-toggle{color:#94a3b8}
+#reportModal[data-report="transactions"] .status-badge.returned{color:#6d28d9;background:#ede9fe;border:1px solid #e4dcff;border-radius:999px}
+#reportModal[data-report="transactions"] .transaction-report-notes{min-width:180px;max-width:300px;overflow-wrap:anywhere;white-space:pre-wrap}
+#reportModal[data-report="transactions"] .inventory-report-pagination{grid-column:1/-1;order:5;margin:0;padding:12px 16px;background:white;border:1px solid #e2e8f0;border-radius:14px;font-size:12px}
+#reportModal[data-report="transactions"] .transaction-activity-heading{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#reportModal[data-report="transactions"] .transaction-activity-heading h3{margin:0;font-size:15px;color:#334155}
+#reportModal[data-report="transactions"] .transaction-activity-heading h3 i{font-size:9px;color:#34b892;margin-right:6px}
+#reportModal[data-report="transactions"] .transaction-activity-heading p{margin:5px 0 0;font-size:12px;color:#64748b;line-height:1.5}
+#reportModal[data-report="transactions"] .transaction-activity-lines{padding:9px 12px;border:1px solid #e9ddff;border-radius:12px;background:#f5f0ff;color:#6028a8;font-size:12px}
+@media(max-width:1100px){
+ #reportModal[data-report="transactions"]>.card{grid-template-columns:minmax(0,1fr);gap:18px}
+ #reportModal[data-report="transactions"] .transaction-report-overview{grid-column:1/-1}
+}
+@media(max-width:640px){
+ #reportModal[data-report="transactions"] .report-view-heading>div{order:initial;flex-basis:auto}
+ #reportModal[data-report="transactions"] .report-view-heading h2{font-size:24px}
+ #reportModal[data-report="transactions"] .transaction-report-overview{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ #reportModal[data-report="transactions"] .transaction-report-stat{padding:12px;border-radius:14px}
+ #reportModal[data-report="transactions"] .report-toolbar-row{padding:12px;gap:8px}
+ #reportModal[data-report="transactions"] .inventory-report-toolbar{width:100%;flex-basis:100%}
+ #reportModal[data-report="transactions"] .inventory-report-toolbar label:first-child{flex-basis:100%}
+ #reportModal[data-report="transactions"] .report-toolbar-row button,#reportModal[data-report="transactions"] .report-toolbar-row summary{min-height:44px}
+ #reportModal[data-report="transactions"] #reportTableBody>.transaction-report-summary>td{padding:16px 12px}
+}/* Reports mobile layout: reference-style stacked controls and the same live rows as cards. */
+@media(max-width:767px){
+ .main-content:has(#reportsPage.active) .page-content{padding:16px;min-width:0}
+ .main-content:has(#reportsPage.active) .header{min-height:64px}
+ .main-content:has(#reportsPage.active) .page-title{font-size:18px}
+ #reportsPage .reports-grid{grid-template-columns:minmax(0,1fr);gap:12px}
+ #reportsPage .reports-heading h2{font-size:24px}
+ #reportsPage .report-card{border-radius:18px;padding:18px;min-width:0}
+ #reportsPage .report-info{min-width:0;overflow-wrap:anywhere}
+ #reportsPage .report-toolbar-row{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;padding:16px}
+ #reportsPage .inventory-report-toolbar{display:grid;grid-template-columns:minmax(0,1fr);flex:1 1 100%;width:100%;gap:12px;min-width:0}
+ #reportsPage .inventory-report-toolbar label{display:grid;gap:6px;width:100%;max-width:none;min-width:0;font-size:12px}
+ #reportsPage .inventory-report-toolbar input,#reportsPage .inventory-report-toolbar select{box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:48px;font-size:16px;border-radius:14px;background:#f8fafc}
+ #reportsPage .report-toolbar-row button,#reportsPage .report-toolbar-row summary{min-height:44px}
+ #reportsPage .report-toolbar-row #exportReportBtn{flex:1 1 160px;justify-content:center;border-radius:14px;background:#6028a8;color:white}
+ #reportsPage .report-columns{margin:0;align-self:end}
+ #reportsPage .inventory-report-pagination{display:flex;flex-wrap:wrap;gap:10px;padding:14px}
+ #reportsPage .inventory-report-pagination>span{flex-basis:100%}
+ #reportsPage .inventory-report-pagination select,#reportsPage .inventory-report-pagination button{min-height:44px}
+ #reportModal[data-report="transactions"] .report-view-heading{background:white;border:1px solid #e2e8f0;border-radius:20px;padding:16px}
+ #reportModal[data-report="transactions"] .report-view-heading p{line-height:1.6}
+ #reportModal[data-report="transactions"] .report-toolbar-row{display:flex;padding:16px}
+ #reportModal[data-report="transactions"] .inventory-report-toolbar{display:grid;grid-template-columns:minmax(0,1fr);flex-basis:100%}
+ #reportModal[data-report="transactions"] .inventory-report-toolbar input,#reportModal[data-report="transactions"] .inventory-report-toolbar select{height:48px;font-size:16px}
+ #reportModal[data-report="transactions"] .report-toolbar-row #exportReportBtn{flex:1;min-height:48px}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .report-records{background:transparent;border:0}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .report-table-scroll{max-height:none;overflow:visible;border-radius:0}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .report-table-scroll>.data-table{display:block;min-width:0;width:100%;max-width:100%}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] #reportTableHead{display:block;max-width:100%;overflow-x:auto;margin-bottom:12px;border-radius:12px;background:#6028a8}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] #reportTableHead>tr{display:flex;width:max-content;min-width:100%}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] #reportTableHead th{position:static;min-width:0;padding:10px 12px}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] #reportTableHead th.transaction-report-toggle{display:none}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] #reportTableHead button{min-height:44px}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] #reportTableBody{display:block;min-width:0;width:100%}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] #reportTableBody>.transaction-report-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;padding:12px;background:#fff;border:1px solid #e2e8f0;border-radius:18px;min-width:0}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] #reportTableBody>.transaction-report-summary>td{display:block;position:static;min-width:0;max-width:none;width:auto;padding:0;border:0;white-space:normal;text-align:left;background:transparent;overflow-wrap:anywhere;font-size:12px}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-summary>td[data-label]::before{content:attr(data-label);display:block;margin-bottom:3px;color:#64748b;font-size:10px;font-weight:600}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-summary>.report-identity{grid-column:1;grid-row:1;box-shadow:none}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-summary .transaction-report-id{font-size:11px;font-weight:700;color:#6028a8}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-toggle{grid-column:1/-1;order:2}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-toggle button{min-height:44px;width:100%;border:1px solid #e9e3f3;border-radius:10px;color:#6028a8}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-toggle button::after{content:' Tool details';font-size:13px;margin-left:8px}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-details{display:block;width:100%;min-width:0}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-details>td{display:block;box-sizing:border-box;max-width:100%;width:100%;min-width:0;padding:12px 0;background:transparent!important;border:0}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-detail-scroll{max-width:100%;overflow-x:auto}
+ #reportModal[data-report="transactions"] .transaction-report-overview{padding:16px;gap:8px}
+ #reportModal[data-report="transactions"] .transaction-report-stat{padding:10px;border-radius:12px;background:#faf8ff;box-shadow:none}
+ #reportModal[data-report="transactions"] .transaction-report-stat strong{font-size:22px}
+ #reportModal[data-report="transactions"] .transaction-report-overview>p{font-size:10px;line-height:1.5}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-summary>td[data-label="Status"]{grid-column:2;grid-row:1;text-align:right}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-summary>td[data-label="Status"]::before{display:none}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-summary>td[data-label="Qty Borrowed"],#reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-summary>td[data-label="Qty Returned"]{background:#f8fafc;padding:8px;border-radius:8px;font-weight:700}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-summary>td[data-label="Borrower"]{font-weight:600}
+ #reportModal[data-report="transactions"][data-transactions-grouped="true"] .transaction-report-summary .status-badge{font-size:10px;padding:3px 7px;white-space:normal}
+}

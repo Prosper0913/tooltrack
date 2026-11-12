@@ -14,6 +14,7 @@ $db     = getDB();
 $method = $_SERVER['REQUEST_METHOD'];
 
 $me = requireRole(ROLE_ADMIN);
+if($method==='GET')session_write_close();
 
 // ── GET ───────────────────────────────────────────────────────
 if ($method === 'GET') {

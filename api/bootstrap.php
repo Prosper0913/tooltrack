@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/backup_guard.php';
+ttBackupGate();
 // ================================================================
 //  api/bootstrap.php  —  shared by EVERY PHP file (pages and API
 //  endpoints alike). Sets up session, DB connection, roles, and
@@ -25,9 +27,11 @@ ini_set('log_errors', '1');
 error_reporting(E_ALL);
 
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'tooltrack_db');
+define('DB_NAME', 'tooltrack v2_db');
 define('DB_USER', 'root');        // your MySQL username
 define('DB_PASS', '');            // your MySQL password
+define('APP_TIMEZONE','Asia/Manila');
+date_default_timezone_set(APP_TIMEZONE);
 
 // ── Roles ────────────────────────────────────────────────────
 // Standardized role strings used everywhere in the app.
@@ -47,12 +51,14 @@ define('ROLE_STAFF',  'Staff');
 // samesite=Lax (a reasonable default CSRF mitigation) while we're at it.
 if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
-        'path'     => '/tooltrack/',
+        'path'     => '/tooltrackv2/',
         'httponly' => true,
+        'secure'   => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'samesite' => 'Lax',
     ]);
     session_start();
 }
+ttBackupSessionGuard();
 
 // ── PDO connection (shared by every endpoint) ──────────────────
 function getDB(): PDO {
@@ -65,6 +71,8 @@ function getDB(): PDO {
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]);
+            $offset=(new DateTimeImmutable('now',new DateTimeZone(APP_TIMEZONE)))->format('P');
+            $pdo->exec('SET time_zone='.$pdo->quote($offset));
         } catch (PDOException $e) {
             http_response_code(500);
             header('Content-Type: application/json');
@@ -97,7 +105,7 @@ function body(): array {
 }
 
 function generateTxnId(): string {
-    return 'TXN-' . date('Y') . '-' . strtoupper(substr(uniqid(), -6));
+    return 'TXN-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(6)));
 }
 
 // ── Audit trail ──────────────────────────────────────────────

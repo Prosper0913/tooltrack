@@ -1,0 +1,52 @@
+.bm-flow,.bm-controls,.bm-cart-toggle{display:none}
+a[href="#main-content"],a.skip-link{position:fixed;top:8px;left:8px;transform:translateY(-200%);z-index:10000}
+a[href="#main-content"]:focus,a.skip-link:focus{transform:none;padding:12px 18px;background:#fff;color:#6028a8;border:2px solid #6028a8;border-radius:8px}
+@media(max-width:767px){
+ #borrowPage .bm-flow{display:block;scroll-margin-top:12px;margin-bottom:12px}
+ #borrowPage .bm-progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+ #borrowPage .bm-progress button{min-height:44px;padding:8px 2px;font:inherit;font-size:11px;border:1px solid #e9e3f3;border-radius:10px;background:#fff;color:#6028a8}
+ #borrowPage .bm-progress button[aria-current=step]{background:#6028a8;color:#fff}
+ #borrowPage .bm-progress button:disabled{color:#94a3b8;background:#f8fafc}
+ #borrowPage .bm-summaries{display:grid;gap:6px;margin-top:10px}
+ #borrowPage .bm-summaries button{min-height:44px;text-align:left;background:#f5f0ff;border:1px solid #e9e3f3;border-radius:10px;padding:10px;font:inherit;font-size:12px;color:#6028a8;overflow-wrap:anywhere}
+ #borrowPage .bm-status{font-size:12px;color:#b91c1c;margin:8px 0}
+ #borrowPage .bm-status:empty{display:none}
+ #borrowPage .br-sec.bm-inactive{display:none!important}
+ #borrowPage #borrowCheckoutWorkspace{display:flex;flex-direction:column;gap:12px;min-width:0}
+ #borrowPage #borrowCheckoutWorkspace>.br-card{width:100%;min-width:0}
+ #borrowPage #borrowCheckoutWorkspace>.br-card:first-child>.br-card-header{display:none}
+ #borrowPage #borrowCheckoutWorkspace>.br-card:first-child>.br-card-body{padding:0}
+ #borrowPage .bm-controls{display:flex;justify-content:space-between;gap:12px;margin:12px 0 24px}
+ #borrowPage .bm-controls button{min-height:48px;padding:12px 20px;border:1px solid #e9e3f3;border-radius:12px;background:white;color:#6028a8;font:inherit;font-weight:600}
+ #borrowPage .bm-controls button:last-child{background:#6028a8;color:white;flex:1}
+ #borrowPage .bm-controls button:disabled{opacity:.4}
+ #borrowPage .bm-controls [hidden]{display:none}
+ #borrowPage .bm-cart-toggle{display:block;min-height:44px;padding:8px 12px;border:1px solid #e9e3f3;border-radius:10px;background:#f5f0ff;color:#6028a8;font:inherit;font-size:12px}
+ #borrowPage #borrowCartCard:not(.bm-cart-open) #btCartList{display:none}
+ #borrowPage:not([data-mobile-borrow-step="3"]) #brBar{display:none}
+ #borrowPage:not(.bm-id-used) #idScanInput,#borrowPage:not(.bm-id-used) #idScanStatus,#borrowPage:not(.bm-id-used) #idScanInfo{display:none}
+ #borrowPage input,#borrowPage select,#borrowPage textarea{max-width:100%;box-sizing:border-box}
+ #borrowPage .bm-flow button:focus-visible,#borrowPage .bm-controls button:focus-visible{outline:3px solid #7c3aed;outline-offset:3px}
+ body.on-borrow .main-content .page-content{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
+}
+
+@media(max-width:767px){#borrowPage #borrowCartCard{position:static;top:auto}#borrowPage #borrowCheckoutWorkspace>.br-card:first-child>.br-card-body{display:block} }
+
+/* Active scanner previews must escape the mobile step/form presentation. */
+@media(max-width:767px){
+ #borrowPage:has(.scanner-zone.is-live) .br-sec.bm-inactive:has(.scanner-zone.is-live){display:block!important}
+ #borrowPage:has(.scanner-zone.is-live) #borrowCheckoutWorkspace>.br-card:first-child{display:block!important}
+ #borrowPage .br-card:has(.scanner-zone.is-live){overflow:visible!important}
+ #borrowPage .br-scan.on{position:fixed;inset:0;z-index:1200}
+ #borrowPage .scanner-zone.is-live .qr-reader-viewport{z-index:1202}
+ #borrowPage .br-scan.on::before{z-index:1200}
+ #borrowPage .br-scan-top,#borrowPage .br-scan-panel{z-index:1205}
+ #returnPage .scanner-zone.rt-camera-live{position:fixed!important;inset:0!important;z-index:1200!important;display:flex!important;flex-direction:column;padding:calc(12px + env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));margin:0;border:0;border-radius:0;background:#0f0b1f;color:white;overflow:auto;max-height:100dvh}
+ #returnPage .rt-camera-live .scanner-zone-label{display:block;color:white}
+ #returnPage .rt-camera-live .scanner-controls{flex-shrink:0;display:flex;justify-content:flex-end}
+ #returnPage .rt-camera-live #returnIdStopBtn{display:flex;min-height:48px;padding:12px 20px;background:#6028a8;color:white;border-radius:12px}
+ #returnPage .rt-camera-live #returnIdReader{flex:1;min-height:220px;width:100%;max-width:100%;overflow:hidden}
+ #returnPage .rt-camera-live #returnIdReader video{width:100%!important;max-height:65dvh;object-fit:contain}
+ body:has(.rt-camera-live) #mobileUtilityNav,body:has(#borrowPage .scanner-zone.is-live) #mobileUtilityNav{display:none!important}
+ body:has(.rt-camera-live){overflow:hidden}
+}

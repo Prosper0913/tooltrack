@@ -17,6 +17,8 @@ require_once __DIR__ . '/bootstrap.php';
 // invalid together with credentials=true (browsers will reject
 // it) — replace '*' with your exact frontend origin at that point.
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: private, no-store, max-age=0');
+header('Vary: Cookie');
 header('Access-Control-Allow-Origin: *');          // tighten in production
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');

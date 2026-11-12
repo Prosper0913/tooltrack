@@ -1,16 +1,18 @@
 # ToolTrack — Backend Connection Guide
 
+> This is a historical backend guide. See [README.md](README.md) for the current project map and documentation index. Do not run its setup SQL or migrations against an existing installation without a separate review.
+
 ## Project File Structure
 
 ```
 your-project/
 │
-├── login.html              ← Login page
-├── index.html              ← Main dashboard (tooltrack.html renamed)
+├── Login.html              ← Login page
+├── index.php              ← Main dashboard (tooltrack.html renamed)
 ├── logout.php              ← Destroys session, redirects to login
 │
 └── api/
-    ├── config.php          ← DB credentials + shared helpers
+    ├── bootstrap.php          DB configuration, sessions and shared helpers
     ├── auth.php            ← Login / session / current user
     ├── dashboard.php       ← Stats, charts, alerts
     ├── tools.php           ← Tools CRUD
@@ -36,7 +38,7 @@ This creates the `tooltrack_db` database with all tables.
 
 ## Step 2 — Configure Your Database Credentials
 
-Open `api/config.php` and edit these 4 lines:
+Open `api/bootstrap.php` and edit the database configuration constants:
 
 ```php
 define('DB_HOST', 'localhost');    // usually localhost
@@ -51,11 +53,11 @@ define('DB_PASS', '');             // your MySQL password
 
 **Option A — XAMPP (local)**
 Copy the whole project folder into: `C:/xampp/htdocs/tooltrack/`
-Then open: `http://localhost/tooltrack/login.html`
+Then open: `http://localhost/tooltrack/Login.html`
 
 **Option B — cPanel / Live Server**
 Upload all files to `public_html/tooltrack/` via File Manager or FTP.
-Then open: `https://yourdomain.com/tooltrack/login.html`
+Then open: `https://yourdomain.com/tooltrack/Login.html`
 
 ---
 
@@ -221,7 +223,7 @@ Returns: `{ id, txn_id, tool_name, returned_by, condition }`
 
 ## How Frontend Calls the Backend
 
-The frontend uses `apiFetch()` in `index.html` — here is exactly how each action works:
+The frontend uses `apiFetch()` in `assets/js/app.js` — here is exactly how each action works:
 
 ```
 [User clicks "Add Borrower" → fills form → clicks Save]
@@ -243,7 +245,7 @@ Same pattern for Tools, Transactions, etc.
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `Database connection failed` | Wrong credentials in config.php | Edit DB_USER / DB_PASS |
+| `Database connection failed` | Wrong connection configuration in bootstrap.php | Review the database configuration in `api/bootstrap.php` |
 | `404 Not Found` on API calls | Files not in `api/` folder | Check folder structure |
 | `CORS error` in browser console | Fetching from different port | Add your frontend URL to `Access-Control-Allow-Origin` in config.php |
 | `Class not found` PHP error | PHP version < 8.0 | Check `php -v`, needs PHP 8.0+ |
@@ -254,10 +256,10 @@ Same pattern for Tools, Transactions, etc.
 
 ## Changing the API Path
 
-If your `api/` folder is in a different location, edit one line in `index.html`:
+If your `api/` folder is in a different location, review the API base in `assets/js/app.js`:
 
 ```js
-// Line ~330 in index.html
+// In assets/js/app.js
 const API = 'api';   // ← change this to match your folder path
 // e.g.  const API = '/tooltrack/api';
 //        const API = 'https://yourdomain.com/tooltrack/api';
@@ -287,9 +289,9 @@ echo 'Done. User created.';
 ## Quick Checklist Before Going Live
 
 - [ ] Database created and `database.sql` imported
-- [ ] `api/config.php` credentials updated
+- [ ] `api/bootstrap.php` database configuration reviewed
 - [ ] Files uploaded to server
-- [ ] `login.html` opens without errors
+- [ ] `Login.html` opens without errors
 - [ ] Default login works (`admin@school.edu` / `admin1234`)
 - [ ] Add a tool → appears in table ✓
 - [ ] Add a borrower → appears in table ✓

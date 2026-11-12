@@ -1,0 +1,46 @@
+/* Same card vocabulary as Tools. Desktop/tablet table geometry is untouched. */
+@media(max-width:767px){
+ body table.data-table.tt-mobile-cards{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;table-layout:auto}
+ body table.data-table.tt-mobile-cards>thead{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;overflow:hidden!important;clip-path:inset(50%);white-space:nowrap}
+ body table.data-table.tt-mobile-cards>tbody{display:grid!important;grid-template-columns:minmax(0,1fr);gap:10px;width:100%;min-width:0}
+ body table.data-table.tt-mobile-cards>tbody>tr:not([hidden]){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px;margin:0;border:1px solid var(--gray-200);border-radius:12px;background:#fff;min-width:0;box-shadow:none}
+ body table.data-table.tt-mobile-cards>tbody>tr>td:not([hidden]){display:block!important;width:auto!important;min-width:0!important;max-width:100%!important;padding:8px!important;border:0;background:var(--gray-50);border-radius:8px;text-align:left!important;white-space:normal!important;overflow-wrap:anywhere;font-size:13px;line-height:1.5}
+ body table.data-table.tt-mobile-cards>tbody>tr>td[data-label]:not([hidden])::before{content:attr(data-label);display:block;margin-bottom:4px;font-size:11px;line-height:1.4;font-weight:600;color:var(--gray-600);white-space:normal}
+ body table.data-table.tt-mobile-cards>tbody>tr>td.tt-mobile-identity:not([hidden]){grid-column:1/-1;background:transparent;padding:0!important;color:var(--gray-800);font-weight:600;font-size:14px}
+ body table.data-table.tt-mobile-cards>tbody>tr>td.tt-mobile-actions:not([hidden]){grid-column:1/-1;display:flex!important;flex-wrap:wrap;align-items:center;gap:8px;border-top:1px solid var(--gray-200);padding:10px 0 0!important;background:transparent}
+ body table.data-table.tt-mobile-cards>tbody>tr>td.tt-mobile-actions::before{flex-basis:100%}
+ body table.data-table.tt-mobile-cards button,body table.data-table.tt-mobile-cards a.card-btn{min-height:44px;min-width:44px;max-width:100%;white-space:normal}
+ body table.data-table.tt-mobile-cards input:not([type=checkbox]):not([type=radio]),body table.data-table.tt-mobile-cards select,body table.data-table.tt-mobile-cards textarea{width:100%;max-width:100%;min-width:0;min-height:44px;font-size:16px;box-sizing:border-box}
+ body table.data-table.tt-mobile-cards .tt-truncate,body table.data-table.tt-mobile-cards code{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+ body table.data-table.tt-mobile-cards>tbody>tr.tt-mobile-message:not([hidden]){display:block!important}
+ body table.data-table.tt-mobile-cards>tbody>tr.tt-mobile-message>td:not([hidden]){background:transparent;padding:4px!important}
+ body table.data-table.tt-mobile-cards>tbody>tr.tt-mobile-message>td::before{display:none}
+ body table.data-table.tt-mobile-cards [hidden]{display:none!important}
+ .table-container:has(>table.tt-mobile-cards){min-width:0;max-width:100%;padding:0 0 4px;overscroll-behavior:contain}
+ @media(max-width:360px){
+  body table.data-table.tt-mobile-cards>tbody>tr:not([hidden]){grid-template-columns:minmax(0,1fr)}
+ }
+}
+/* Reports use the Tools Inventory card geometry, including grouped checkouts. */
+@media(max-width:767px){
+ #reportModal.report-workspace:not([data-report="overdue"]) .report-records{min-width:0;max-height:none;overflow:visible;scrollbar-gutter:auto;padding:0 12px 12px;border:0;background:transparent}
+ #reportModal.report-workspace:not([data-report="overdue"]) .report-table-scroll{display:block;flex:none;width:100%;height:auto;min-height:0;max-height:none;overflow:visible;border-radius:0;scrollbar-gutter:auto}
+ #reportModal.report-workspace:not([data-report="overdue"]) .report-table-scroll>.data-table{display:block;width:100%;min-width:0;max-width:100%;border:0;background:transparent}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableHead{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:0!important;overflow:hidden!important;clip-path:inset(50%);white-space:nowrap}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody{display:grid!important;grid-template-columns:minmax(0,1fr);gap:14px;width:100%;min-width:0}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody>tr:not([hidden]){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px;box-sizing:border-box;width:100%;min-width:0;margin:0;padding:16px;border:1px solid #e9e3f3;border-radius:16px;background:#fff;box-shadow:0 2px 9px rgba(40,20,90,.045)}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody>tr>td:not([hidden]){display:block!important;position:static!important;grid-column:auto;grid-row:auto;z-index:auto;width:auto!important;min-width:0!important;max-width:100%!important;padding:9px 10px!important;border:0;background:#f8f8fa!important;border-radius:8px;box-shadow:none;text-align:left!important;white-space:normal;overflow-wrap:anywhere;font-size:13px;line-height:1.5}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody>tr>td[data-label]::before{content:attr(data-label);display:block;margin-bottom:6px;color:#74718a;font-size:11px;font-weight:700;letter-spacing:.02em}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody>tr>td.report-identity:not([hidden]){grid-column:1/-1;grid-row:1;padding:4px 0 12px!important;background:#fff!important;border-bottom:1px solid #eee9f5;font-size:15px;font-weight:600}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody>tr>td.report-identity::before{display:none}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody>tr>td:is(.tt-mobile-actions,.transaction-report-toggle):not([hidden]){grid-column:1/-1;order:2;padding:12px 0 0!important;border-top:1px solid #eee9f5;background:#fff!important}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody>tr>td.transaction-report-toggle button{width:100%;min-height:44px}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody>tr:is(.tt-mobile-message,.transaction-report-details):not([hidden]){display:block!important}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody>tr:is(.tt-mobile-message,.transaction-report-details)>td:not([hidden]){padding:0!important;background:transparent!important}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody>tr.transaction-report-details{margin-top:-14px;border-top:0;border-radius:0 0 14px 14px;background:#faf8ff;box-shadow:none}
+ #reportModal.report-workspace:not([data-report="overdue"]) .transaction-report-tools{min-width:0}
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody [hidden]{display:none!important}
+}
+@media(max-width:360px){
+ #reportModal.report-workspace:not([data-report="overdue"]) #reportTableBody>tr:not([hidden]){padding:12px;gap:10px}
+}

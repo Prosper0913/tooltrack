@@ -1,0 +1,127 @@
+/* ============================================================
+   responsive-polish.css — FPST ToolTrack
+   Additive layer loaded AFTER styles.css and incident-ui.css.
+   It only uses the existing purple tokens (--primary, --gray-*),
+   never replaces a page's own layout, and every rule is either a
+   shared-component fix or scoped to the element it names.
+   ============================================================ */
+
+/* ── 0. Overflow safety: nothing may push the page sideways ── */
+html{-webkit-text-size-adjust:100%}
+body{overflow-x:clip}
+.main-content,.page-content,.page,.card{min-width:0;max-width:100%}
+img,canvas{max-width:100%}
+.table-container{max-width:100%;overscroll-behavior-x:contain}
+
+/* ── 1. Keyboard focus: one visible, high-contrast ring ── */
+:where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid #8b5cf6;outline-offset:2px}
+/* styles.css removes the outline on these and relies on a border colour only */
+.filter-select:focus-visible,.filter-input:focus-visible,.form-input-full:focus-visible,.search-box input:focus-visible{outline:3px solid #8b5cf6;outline-offset:1px}
+.header :is(a,button,input):focus-visible,.sidebar :is(a,button):focus-visible{outline-color:#fff}
+.sidebar .nav-item:focus-visible{outline-offset:-3px;outline-color:#fff}
+.table-container:focus-visible{outline:3px solid #8b5cf6;outline-offset:-3px}
+.modal:focus{outline:none}
+.skip-link{position:fixed;left:12px;top:-64px;z-index:10000;background:#fff;color:var(--primary-dark);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.25);text-decoration:none}
+.skip-link:focus{top:max(12px,env(safe-area-inset-top))}
+
+/* ── 2. Readable text: lift the faintest greys to AA contrast ── */
+.filter-label,.pagination-info,.stat-label{color:var(--gray-600)}
+.data-table th{color:var(--gray-600)}
+.empty-state{color:var(--gray-600)}
+.form-input-full::placeholder,.filter-input::placeholder{color:var(--gray-500);opacity:1}
+tr.empty-row>td{text-align:center;color:var(--gray-600);padding:32px 16px;white-space:normal}
+
+/* ── 3. Modals: dynamic viewport height, safe areas, pinned header/footer ── */
+.modal-overlay{padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+.modal{max-height:92vh;max-height:92dvh;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.modal>.modal-header{position:sticky;top:0;z-index:3;background:#fff;gap:12px}
+.modal>.modal-footer{position:sticky;bottom:0;z-index:3;background:#fff}
+.modal-title{min-width:0;overflow-wrap:anywhere}
+.modal-close{flex-shrink:0}
+.pagination{flex-wrap:wrap;gap:10px}
+.pagination-btns{flex-wrap:wrap}
+
+/* ── 4. Tablet (769–1024px): same layout, tighter chrome ── */
+@media(min-width:769px) and (max-width:1024px){
+  :root{--sidebar-width:224px}
+  .header{padding:0 20px}
+  .header-right{gap:10px}
+  .search-box{width:200px}
+  .date-display{display:none}
+  .page-content{padding:24px}
+  .stats-grid{gap:16px;margin-bottom:24px}
+  .card-header{padding:16px 20px;flex-wrap:wrap;gap:12px}
+  .filter-bar{padding:14px 20px;gap:12px}
+}
+
+/* ── 5. Phones and small tablets (≤768px) ── */
+@media(max-width:768px){
+  /* drawer: never wider than the screen, and unreachable by Tab while closed */
+  .sidebar{width:min(300px,86vw);padding-bottom:env(safe-area-inset-bottom)}
+  .sidebar:not(.open){visibility:hidden;transition:transform .3s ease,visibility 0s linear .3s}
+  .sidebar.open{visibility:visible;transition:transform .3s ease}
+
+  /* header: long page titles truncate instead of pushing the buttons off-screen */
+  .header{gap:8px;padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+  .header-left{min-width:0;flex:1 1 auto}
+  .header-left>div{min-width:0}
+  .page-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .header-right{gap:8px;flex-shrink:0}
+
+  /* dashboard stat cards: two compact columns instead of seven tall rows */
+  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:20px}
+  .stats-grid>.stat-card:last-child:nth-child(odd){grid-column:1/-1}
+  .stat-card{padding:14px;border-radius:14px}
+  .stat-card:hover{transform:none}
+  .stat-header{margin-bottom:10px}
+  .stat-icon{width:38px;height:38px;font-size:16px;border-radius:10px}
+  .stat-value{font-size:24px;overflow-wrap:anywhere}
+  .stat-label{font-size:13px}
+  .chart-container{height:260px}
+  .dash-chart-controls{width:100%}
+  .month-nav{flex-wrap:wrap}
+
+  /* 16px controls stop iOS from zooming the page on focus */
+  .filter-select,.filter-input,.form-input-full,.search-box input,.modal input:not([type=checkbox]):not([type=radio]),.modal select,.modal textarea{font-size:16px}
+  .filter-bar .filter-input{min-width:0}
+}
+
+/* ── 6. Small phones (≤640px) ── */
+@media(max-width:640px){
+  .modal-header{align-items:flex-start}
+  .modal>.modal-footer{padding-bottom:max(12px,env(safe-area-inset-bottom))}
+  .toast-container{left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));align-items:stretch}
+  .toast{width:100%;box-sizing:border-box;overflow-wrap:anywhere}
+}
+
+/* ── 7. Global search stays available on phones (it was hidden ≤480px) ──
+   Collapsed to a 40px icon; tapping it expands a full-width field over the
+   header. Pure CSS, driven by :focus-within, so existing search code is unchanged. */
+@media(max-width:480px){
+  .header .search-box{display:block;width:40px;flex:0 0 auto}
+  .header .search-box input{width:40px;height:40px;padding:0;cursor:pointer;color:transparent;caret-color:transparent}
+  .header .search-box input::placeholder{color:transparent}
+  .header .search-box i{left:50%;transform:translate(-50%,-50%);pointer-events:none}
+  .header .search-box:focus-within{position:fixed;top:calc((var(--header-height) - 40px)/2);left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));width:auto;z-index:60}
+  .header .search-box:focus-within input{width:100%;padding:0 16px 0 42px;color:#fff;caret-color:auto;cursor:text;background:var(--primary-dark);border-color:#fff}
+  .header .search-box:focus-within input::placeholder{color:rgba(255,255,255,.8)}
+  .header .search-box:focus-within i{left:14px;transform:translateY(-50%)}
+}
+
+/* ── 8. Touch devices: 44px minimum tap targets ── */
+@media(pointer:coarse){
+  .btn,.card-btn,.filter-btn,.seg-btn,.borrowers-filter-toggle,.nav-item,.pagination-btns button{min-height:44px}
+  .modal-close,.header-btn,.mobile-menu-btn,.pagination-btns button{min-width:44px;min-height:44px}
+  .filter-select,.filter-input,.form-input-full,.search-box input{min-height:44px}
+}
+
+/* ── 9. Short landscape phones: give content the height ── */
+@media(max-height:500px) and (orientation:landscape){
+  :root{--header-height:56px}
+  .modal{max-height:100vh;max-height:100dvh}
+}
+
+/* ── 10. Respect reduced-motion (spinners keep turning: they signal loading) ── */
+@media(prefers-reduced-motion:reduce){
+  *:not(.spinner),*:not(.spinner)::before,*:not(.spinner)::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
